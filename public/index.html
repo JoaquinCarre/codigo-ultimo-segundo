@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CÓDIGO: ÚLTIMO SEGUNDO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{
+  --g:#00ff88;--gd:#00aa55;--gk:#003322;
+  --r:#ff2244;--rd:#aa1133;
+  --b:#00aaff;--bd:#005599;
+  --w:#e0ffe8;
+  --bg:#020c06;--bg2:#040f08;--bg3:#071a0d;
+  --bor:#00551a;--txt:#88ffaa;--txd:#336644;
+  --sc:rgba(0,255,100,0.03);
+  --orange:#ff9900;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--txt);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;font-size:105%;}
+body::before{content:'';position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--sc) 2px,var(--sc) 4px);pointer-events:none;z-index:999;}
+.wrap{max-width:1200px;margin:0 auto;padding:14px;}
+.hdr{text-align:center;padding:18px 0 10px;border-bottom:1px solid var(--bor);margin-bottom:14px;}
+.title{font-family:'Orbitron',monospace;font-size:clamp(17px,4vw,32px);font-weight:900;color:var(--g);letter-spacing:4px;text-shadow:0 0 20px var(--gd);}
+.sub{font-size:11px;color:var(--txd);letter-spacing:3px;margin-top:4px;}
+.panel{background:var(--bg2);border:1px solid var(--bor);border-radius:4px;padding:11px 13px;}
+.ptitle{font-family:'Orbitron',monospace;font-size:9px;color:var(--txd);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid var(--bor);padding-bottom:5px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+@media(max-width:700px){.grid2{grid-template-columns:1fr;}}
+.tbar{background:var(--bg3);border:1px solid var(--bor);border-radius:4px;padding:10px 14px;display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
+.ttrack{flex:1;min-width:80px;height:11px;background:var(--bg);border:1px solid var(--bor);border-radius:2px;overflow:hidden;}
+.tfill{height:100%;transition:width .4s,background .4s;}
+.tcnt{font-family:'Orbitron',monospace;font-size:17px;font-weight:700;min-width:38px;text-align:right;}
+.card{width:46px;height:62px;border-radius:4px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-family:'Share Tech Mono',monospace;font-weight:bold;transition:transform .1s,border-color .15s,box-shadow .15s;user-select:none;flex-shrink:0;}
+.card:hover{transform:translateY(-4px);}
+.card.selected{border-color:#fff!important;transform:translateY(-6px);box-shadow:0 0 8px rgba(255,255,255,.3);}
+.card.red{background:rgba(255,34,68,.18);border-color:var(--r);color:var(--r);}
+.card.green{background:rgba(0,200,100,.12);border-color:var(--gd);color:var(--g);}
+.card.blue{background:rgba(0,170,255,.15);border-color:var(--bd);color:var(--b);}
+.card.white{background:rgba(224,255,232,.08);border-color:rgba(224,255,232,.4);color:var(--w);}
+.card.fault{background:rgba(255,100,0,.15);border-color:#ff6600;color:#ff6600;}
+.card.bomb-c{background:rgba(255,0,60,.2);border-color:var(--r);color:var(--r);}
+.card.special-c{background:rgba(255,0,200,.15);border-color:#ff00cc;color:#ff88ee;}
+.cicon{font-size:16px;line-height:1;}
+.clbl{font-size:7px;letter-spacing:.5px;margin-top:2px;opacity:.8;text-align:center;line-height:1.2;}
+.cback{width:46px;height:62px;border-radius:4px;border:1px solid var(--bor);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--bor);flex-shrink:0;cursor:pointer;transition:border-color .15s;}
+.cback.sel{border:2px solid var(--g);background:rgba(0,255,136,.08);}
+.hand{display:flex;flex-wrap:wrap;gap:5px;min-height:62px;align-items:flex-start;}
+.btn{background:transparent;border:1px solid var(--gd);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:11px;padding:7px 13px;border-radius:2px;cursor:pointer;letter-spacing:1px;transition:background .15s,border-color .15s;text-transform:uppercase;}
+.btn:hover{background:rgba(0,255,136,.08);border-color:var(--g);}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.3;cursor:not-allowed;}
+.btn.danger{border-color:var(--rd);color:var(--r);}
+.btn.primary{border-color:var(--g);background:rgba(0,255,136,.1);}
+.btn.primary:hover{background:rgba(0,255,136,.18);}
+.btn.warn{border-color:#ff6600;color:#ff8844;}
+.btn.blue-btn{border-color:var(--bd);color:var(--b);}
+.brow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.req{padding:2px 8px;border-radius:2px;font-size:11px;font-weight:bold;letter-spacing:1px;}
+.req.red{background:rgba(255,34,68,.2);border:1px solid var(--r);color:var(--r);}
+.req.green{background:rgba(0,255,136,.1);border:1px solid var(--gd);color:var(--g);}
+.req.blue{background:rgba(0,170,255,.15);border:1px solid var(--bd);color:var(--b);}
+.req.white{background:rgba(224,255,232,.1);border:1px solid rgba(224,255,232,.3);color:var(--w);}
+.bslot{background:var(--bg3);border:1px solid var(--bor);border-radius:4px;padding:9px;min-width:115px;flex:1;}
+.bslot.defused{border-color:var(--gd);opacity:.5;}
+.bslot.active{border-color:var(--orange);}
+@keyframes blink{0%,100%{border-color:var(--r);}50%{border-color:var(--rd);}}
+.bslot.special-slot{border-color:#ff00cc;animation:blink .7s infinite;}
+.btier{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;}
+.btier.basic{color:var(--g);}
+.btier.heavy{color:var(--orange);}
+.btier.special{color:#ff88ee;}
+.pbar{display:flex;gap:6px;align-items:center;margin-bottom:10px;padding:7px 12px;background:var(--bg3);border:1px solid var(--bor);border-radius:4px;flex-wrap:wrap;}
+.pstep{font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;padding:3px 7px;border-radius:2px;border:1px solid var(--bor);color:var(--txd);}
+.pstep.active{border-color:var(--orange);color:var(--orange);background:rgba(255,150,0,.08);}
+.pstep.done{border-color:var(--gd);color:var(--gd);}
+.sbadge{display:inline-block;padding:2px 8px;border-radius:2px;font-size:9px;letter-spacing:2px;font-family:'Orbitron',monospace;}
+.bg{background:rgba(0,255,136,.1);border:1px solid var(--gd);color:var(--g);}
+.by{background:rgba(255,150,0,.1);border:1px solid var(--orange);color:var(--orange);}
+.crisis-box{background:rgba(255,34,68,.1);border:1px solid var(--rd);border-radius:4px;padding:11px 15px;font-size:12px;color:var(--r);margin-bottom:10px;line-height:1.7;}
+.special-box{background:rgba(255,0,200,.08);border:1px solid #ff00cc;border-radius:4px;padding:11px 15px;font-size:12px;color:#ff88ee;margin-bottom:10px;line-height:1.7;}
+.fault-box{background:rgba(255,100,0,.1);border:1px solid #ff6600;border-radius:4px;padding:11px 15px;font-size:12px;color:#ff8844;margin-bottom:10px;line-height:1.7;}
+.discard-box{background:rgba(255,150,0,.08);border:1px solid var(--orange);border-radius:4px;padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:10px;line-height:1.7;}
+.log-area{font-size:12px;max-height:120px;overflow-y:auto;line-height:1.7;scrollbar-width:thin;scrollbar-color:var(--bor) var(--bg);}
+.le{color:var(--txd);}
+.lw{color:var(--orange);}
+.lo{color:var(--g);}
+.lb{color:var(--r);}
+.li{color:var(--b);}
+.lm{color:#ff88ee;}
+.lp{color:#aaaaff;}
+.sel-prev{background:var(--bg3);border:1px dashed var(--bor);border-radius:4px;padding:7px 11px;font-size:11px;color:var(--txd);margin-bottom:7px;min-height:28px;}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;display:flex;align-items:center;justify-content:center;}
+.modal{background:var(--bg2);border:1px solid var(--bor);border-radius:4px;padding:30px 34px;max-width:440px;width:90%;text-align:center;}
+.mtitle{font-family:'Orbitron',monospace;font-size:21px;font-weight:900;letter-spacing:4px;margin-bottom:10px;}
+.mtitle.win{color:var(--g);text-shadow:0 0 20px var(--gd);}
+.mtitle.lose{color:var(--r);text-shadow:0 0 20px var(--rd);}
+.mmsg{color:var(--txd);font-size:12px;margin-bottom:18px;line-height:1.8;}
+/* Lobby */
+.lobby{max-width:520px;margin:30px auto;padding:0 16px;}
+.lobby-panel{background:var(--bg2);border:1px solid var(--bor);border-radius:4px;padding:20px;margin-bottom:14px;}
+.field{width:100%;background:var(--bg3);border:1px solid var(--gd);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:14px;padding:8px 12px;border-radius:2px;outline:none;letter-spacing:2px;text-transform:uppercase;}
+.field:focus{border-color:var(--g);box-shadow:0 0 6px rgba(0,255,136,.2);}
+.field::placeholder{color:var(--txd);text-transform:none;letter-spacing:1px;}
+.room-code{font-family:'Orbitron',monospace;font-size:32px;font-weight:900;color:var(--g);letter-spacing:8px;text-align:center;padding:16px;background:var(--bg3);border:1px solid var(--bor);border-radius:4px;margin:10px 0;}
+.player-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;}
+.player-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--bor);border-radius:4px;font-size:12px;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot.on{background:var(--g);}
+.dot.off{background:var(--rd);}
+.hint-input{background:var(--bg3);border:1px solid var(--gd);color:var(--g);font-family:'Share Tech Mono',monospace;font-size:14px;padding:8px 12px;border-radius:2px;flex:1;letter-spacing:2px;outline:none;}
+.hint-input:focus{border-color:var(--g);}
+.ws-status{font-size:9px;letter-spacing:2px;font-family:'Orbitron',monospace;}
+.ws-ok{color:var(--g);}
+.ws-err{color:var(--r);}
+.ws-connecting{color:var(--orange);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="title">CÓDIGO: ÚLTIMO SEGUNDO</div>
+    <div class="sub" id="sub-line">DESACTIVACIÓN COOPERATIVA — 2 A 6 AGENTES</div>
+  </div>
+  <div id="root"></div>
+</div>
+<div id="modal-ov" class="modal-ov" style="display:none">
+  <div class="modal">
+    <div id="m-title" class="mtitle">—</div>
+    <div id="m-msg" class="mmsg">—</div>
+    <button class="btn primary" onclick="goLobby()">▶ VOLVER AL LOBBY</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS & GAME DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+const CN={red:'Rojo',green:'Verde',blue:'Azul',white:'Comodín'};
+const CI={red:'●',green:'●',blue:'●',white:'◉',fault:'⚡',bomb:'💣',special:'☢'};
+
+const BOMB_DEFS=[
+  {id:'A',tier:'basic',label:'BÁSICA A',reqs:{red:2,green:1},copies:5},
+  {id:'B',tier:'basic',label:'BÁSICA B',reqs:{red:1,green:2},copies:4},
+  {id:'C',tier:'basic',label:'BÁSICA C',reqs:{red:1,green:1,blue:1},copies:4},
+  {id:'D',tier:'basic',label:'BÁSICA D',reqs:{red:2,blue:1},copies:3},
+  {id:'E',tier:'basic',label:'BÁSICA E',reqs:{green:2,blue:1},copies:2},
+  {id:'F',tier:'heavy',label:'PESADA F',reqs:{red:2,green:2},copies:4},
+  {id:'G',tier:'heavy',label:'PESADA G',reqs:{red:3,green:1},copies:3},
+  {id:'H',tier:'heavy',label:'PESADA H',reqs:{red:1,green:3},copies:2},
+  {id:'I',tier:'heavy',label:'PESADA I',reqs:{red:2,green:1,blue:1},copies:2},
+  {id:'J',tier:'heavy',label:'PESADA J',reqs:{red:1,green:2,blue:1},copies:1},
+];
+
+const SPECIALS={
+  s1:[
+    {id:'S1a',label:'ESPECIAL S1a',reqs:{red:4,green:2,blue:1}},
+    {id:'S1b',label:'ESPECIAL S1b',reqs:{red:3,green:3,blue:1}},
+    {id:'S1c',label:'ESPECIAL S1c',reqs:{red:3,green:2,blue:2}},
+    {id:'S1d',label:'ESPECIAL S1d',reqs:{red:2,green:3,blue:2}},
+  ],
+  s2:[
+    {id:'S2a',label:'ESPECIAL S2a',reqs:{red:6,green:5,blue:2}},
+    {id:'S2b',label:'ESPECIAL S2b',reqs:{red:5,green:5,blue:3}},
+    {id:'S2c',label:'ESPECIAL S2c',reqs:{red:6,green:4,blue:3}},
+    {id:'S2d',label:'ESPECIAL S2d',reqs:{red:5,green:4,blue:4}},
+  ],
+  s3:[
+    {id:'S3a',label:'ESPECIAL S3a',reqs:{red:7,green:6,blue:3}},
+    {id:'S3b',label:'ESPECIAL S3b',reqs:{red:6,green:7,blue:3}},
+    {id:'S3c',label:'ESPECIAL S3c',reqs:{red:7,green:5,blue:4}},
+    {id:'S3d',label:'ESPECIAL S3d',reqs:{red:6,green:5,blue:5}},
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DECK BUILDERS
+// ═══════════════════════════════════════════════════════════════════════════
+function buildBombDeck(){
+  let d=[];
+  for(let def of BOMB_DEFS)
+    for(let i=0;i<def.copies;i++)
+      d.push({...def,reqs:{...def.reqs},type:'bomb',defused:false});
+  return shuffle(d);
+}
+
+function buildCableDeck(n){
+  let d=[];
+  const add=(col,count,lbl)=>{for(let i=0;i<count;i++)d.push({color:col,label:lbl,type:'cable'});};
+  add('red',30,'Rojo');add('green',28,'Verde');add('blue',16,'Azul');add('white',2,'Comodín');
+  if(n>=5){add('red',8,'Rojo');add('green',9,'Verde');add('blue',3,'Azul');}
+  return shuffle(d);
+}
+
+function buildFaults(){
+  return Array(4).fill(null).map(()=>({type:'fault',color:'fault',label:'FALLA',faultColor:'multi'}));
+}
+
+function shuffle(a){let b=[...a];for(let i=b.length-1;i>0;i--){let j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+function pickSpecial(n){
+  const pool=n<=3?SPECIALS.s1:n<=5?SPECIALS.s2:SPECIALS.s3;
+  const s=pool[0|Math.random()*pool.length];
+  return{...s,reqs:{...s.reqs},tier:'special',type:'special',defused:false};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GAME HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function countCols(cards){
+  let c={};
+  for(let x of cards)if(x.type==='cable')c[x.color]=(c[x.color]||0)+1;
+  return c;
+}
+function canDefuse(hand,bomb){
+  let c=countCols(hand),w=c.white||0;
+  for(let[col,n]of Object.entries(bomb.reqs)){
+    let have=c[col]||0;
+    if(have<n){let def=n-have;if(w>=def)w-=def;else return false;}
+  }
+  return true;
+}
+function neededCards(hand,bomb){
+  let c=countCols(hand),res={};
+  for(let[col,n]of Object.entries(bomb.reqs)){
+    let have=Math.min(c[col]||0,n);res[col]=have;
+    let def=n-have;if(def>0){let w=c.white||0;res.white=(res.white||0)+Math.min(def,w);}
+  }
+  return res;
+}
+function removeCards(hand,toRem){
+  let rem=[...hand];
+  for(let[col,n]of Object.entries(toRem)){
+    let done=0;
+    rem=rem.filter(c=>{if(done<n&&c.color===col&&c.type==='cable'){done++;return false;}return true;});
+  }
+  return rem;
+}
+function missingFor(hand,bomb){
+  let c=countCols(hand),w=c.white||0,miss=0;
+  for(let[col,n]of Object.entries(bomb.reqs)){
+    let have=c[col]||0,def=Math.max(0,n-have);
+    if(def>0){let use=Math.min(def,w);w-=use;miss+=def-use;}
+  }
+  return miss;
+}
+function reqHTML(bomb){
+  return Object.entries(bomb.reqs).map(([c,n])=>`<span class="req ${c}">${n}×${c.substring(0,3).toUpperCase()}</span>`).join(' ');
+}
+function getCombos(n,k){
+  let r=[];
+  function c(s,cur){if(cur.length===k){r.push([...cur]);return;}for(let i=s;i<n;i++){cur.push(i);c(i+1,cur);cur.pop();}}
+  c(0,[]);return r;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let APP={
+  screen:'lobby',      // lobby | game
+  // Session info
+  myId:null,
+  myName:null,
+  roomId:null,
+  roomCode:null,
+  isHost:false,
+  roomPlayers:[],
+  // WebSocket
+  ws:null,
+  wsStatus:'disconnected', // connecting | connected | disconnected | error
+  pingInterval:null,
+  // Game state (full G object, shared with server)
+  G:null,
+  // Local UI state (not shared)
+  selectedCards:[],
+  crisisOwnSelected:[],
+  faultSelected:[],
+  discardSelected:[],
+  hintText:'',
+  hints:[],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════════════════════════════════════
+function connectWS(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  const url=`${proto}//${location.host}`;
+  APP.wsStatus='connecting';
+  APP.ws=new WebSocket(url);
+
+  APP.ws.onopen=()=>{
+    APP.wsStatus='connected';
+    // Identify ourselves
+    wsSend('connect',{roomId:APP.roomId,playerId:APP.myId});
+    // Keepalive
+    APP.pingInterval=setInterval(()=>wsSend('ping',{}),25000);
+    renderStatus();
+  };
+
+  APP.ws.onmessage=(evt)=>{
+    let msg;try{msg=JSON.parse(evt.data);}catch{return;}
+    handleServerMsg(msg);
+  };
+
+  APP.ws.onclose=()=>{
+    APP.wsStatus='disconnected';
+    clearInterval(APP.pingInterval);
+    renderStatus();
+    // Auto-reconnect after 3s
+    setTimeout(()=>{if(APP.roomId&&APP.myId)connectWS();},3000);
+  };
+
+  APP.ws.onerror=()=>{APP.wsStatus='error';renderStatus();};
+}
+
+function wsSend(type,data){
+  if(APP.ws&&APP.ws.readyState===WebSocket.OPEN){
+    APP.ws.send(JSON.stringify({type,data}));
+  }
+}
+
+function handleServerMsg(msg){
+  const{type,data}=msg;
+
+  if(type==='connected'){
+    APP.roomPlayers=data.room.players;
+    APP.isHost=data.room.hostId===APP.myId;
+    if(data.gameState){
+      APP.G=data.gameState;
+      APP.screen='game';
+    }
+    render();return;
+  }
+
+  if(type==='player_connected'||type==='player_disconnected'){
+    APP.roomPlayers=data.room.players;
+    addLog(`${data.name} ${type==='player_connected'?'se conectó':'se desconectó'}.`,'lp');
+    render();return;
+  }
+
+  if(type==='game_started'){
+    APP.G=data.gameState;
+    APP.roomPlayers=data.room.players;
+    APP.screen='game';
+    addLog('¡Partida iniciada!','lo');
+    render();return;
+  }
+
+  if(type==='game_state'){
+    APP.G=data.gameState;
+    if(data.action) addLog(data.action,'lp');
+    render();return;
+  }
+
+  if(type==='hint'){
+    APP.hints.push({playerName:data.playerName,text:data.text});
+    if(APP.hints.length>10)APP.hints.shift();
+    addLog(`${data.playerName}: "${data.text}"`,'lo');
+    render();return;
+  }
+
+  if(type==='game_ended'){
+    APP.G=null;APP.screen='lobby';
+    addLog(`Partida terminada: ${data.message}`,'lw');
+    render();return;
+  }
+}
+
+function pushGameState(action){
+  wsSend('game_action',{gameState:APP.G,action});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════════════════════════════
+let appLog=[];
+function addLog(msg,cls='le'){
+  appLog.unshift({msg,cls});
+  if(appLog.length>50)appLog.pop();
+  if(APP.G){APP.G.log=appLog;}
+}
+function log(msg,cls='le'){addLog(msg,cls);}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOBBY ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+async function doCreateRoom(){
+  const name=document.getElementById('inp-name')?.value?.trim();
+  if(!name){alert('Ingresá tu nombre.');return;}
+  try{
+    const r=await fetch('/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerName:name})});
+    const d=await r.json();
+    if(!r.ok){alert(d.error||'Error.');return;}
+    APP.myId=d.playerId;APP.myName=name;
+    APP.roomId=d.roomId;APP.roomCode=d.code;
+    APP.isHost=true;APP.roomPlayers=d.room.players;
+    connectWS();
+    render();
+  }catch(e){alert('Error de conexión.');}
+}
+
+async function doJoinRoom(){
+  const name=document.getElementById('inp-name')?.value?.trim();
+  const code=document.getElementById('inp-code')?.value?.trim();
+  if(!name){alert('Ingresá tu nombre.');return;}
+  if(!code||code.length!==6){alert('Código de sala inválido (6 caracteres).');return;}
+  try{
+    const r=await fetch(`/api/rooms/${code}/join`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerName:name})});
+    const d=await r.json();
+    if(!r.ok){alert(d.error||'Error.');return;}
+    APP.myId=d.playerId;APP.myName=name;
+    APP.roomId=d.roomId;APP.roomCode=d.code;
+    APP.isHost=false;APP.roomPlayers=d.room.players;
+    connectWS();
+    render();
+  }catch(e){alert('Error de conexión.');}
+}
+
+function doStartGame(){
+  if(!APP.isHost)return;
+  const n=APP.roomPlayers.length;
+  if(n<2){alert('Se necesitan al menos 2 jugadores.');return;}
+
+  // Build game state on host side
+  const G=buildInitialGameState(n);
+  APP.G=G;
+  appLog=G.log||[];
+  APP.screen='game';
+  wsSend('start_game',{gameState:G});
+  render();
+}
+
+function buildInitialGameState(n){
+  let bombs=buildBombDeck();
+  let cables=buildCableDeck(n);
+
+  // Assign players using room order (host = index 0 always)
+  let players=APP.roomPlayers.map((rp,i)=>({
+    id:rp.id,
+    name:rp.name,
+    isHuman:true,   // all real players
+    bomb:bombs.shift(),
+    bombDefused:false,
+    hand:[],
+  }));
+
+  let numPub=n+1;
+  let pubQueue=[];
+  for(let i=0;i<numPub;i++)pubQueue.push(bombs.shift());
+
+  let timeDeck=[...bombs];
+  let gameDeck=[...cables];
+
+  // Insert public bombs randomly (min 4 from start)
+  for(let b of pubQueue){
+    let pos=Math.floor(Math.random()*(gameDeck.length-4)+4);
+    gameDeck.splice(pos,0,b);
+  }
+
+  // Deal 4 cards to each player
+  for(let p of players)for(let i=0;i<4;i++)p.hand.push(gameDeck.shift());
+
+  // Insert faults
+  let faults=buildFaults();
+  let fs=Math.floor(gameDeck.length/(faults.length+1));
+  for(let i=0;i<faults.length;i++){
+    let pos=fs*(i+1)+Math.floor((Math.random()-.5)*Math.max(1,fs/3));
+    pos=Math.max(3,Math.min(gameDeck.length-1,pos));
+    gameDeck.splice(pos,0,faults[i]);
+  }
+
+  // Insert special bomb at 65-75%
+  let special=pickSpecial(n);
+  let spMin=Math.floor(gameDeck.length*.65),spMax=Math.floor(gameDeck.length*.75);
+  gameDeck.splice(spMin+Math.floor(Math.random()*(spMax-spMin)),0,special);
+
+  return{
+    numPlayers:n,players,maxHand:8,
+    currentTurn:0,
+    phase:'action',   // action | draw | hint | clock
+    actionsDone:0,maxActions:3,
+    skipClock:false,
+    gameDeck,timeDeck,timeLeft:timeDeck.length,
+    clockDouble:false,
+    discard:[],publicBombs:[],specialBomb:null,specialFailed:false,
+    log:[{msg:'Partida iniciada — '+n+' agentes. Buena suerte.',cls:'lo'}],
+  };
+}
+
+function goLobby(){
+  document.getElementById('modal-ov').style.display='none';
+  APP.G=null;APP.screen='lobby';
+  appLog=[];APP.hints=[];
+  APP.selectedCards=[];APP.crisisOwnSelected=[];APP.faultSelected=[];APP.discardSelected=[];
+  // Reset fault/crisis local state
+  resetLocalState();
+  render();
+}
+
+function resetLocalState(){
+  APP.faultRound=false;APP.faultOrder=[];APP.faultRoundIdx=0;
+  APP.faultContrib=[];APP.faultPending=0;APP.faultMode=null;
+  APP.faultConsult=false;APP.faultConsultColor=null;
+  APP.faultConsultReplies=[];APP.faultConsultDone=false;
+  APP.crisisMode=false;APP.crisisBomb=null;APP.crisisStealer=null;
+  APP.discardMode=false;APP.discardCount=0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS — who am I in the game?
+// ═══════════════════════════════════════════════════════════════════════════
+function myPlayer(){
+  if(!APP.G)return null;
+  return APP.G.players.find(p=>p.id===APP.myId)||null;
+}
+function curPlayer(){
+  if(!APP.G)return null;
+  return APP.G.players[APP.G.currentTurn]||null;
+}
+function isMyTurn(){
+  return curPlayer()&&curPlayer().id===APP.myId;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GAME ACTIONS (modify G then push to server)
+// ═══════════════════════════════════════════════════════════════════════════
+function tickTime(n=1){
+  let ticks=n*(APP.G.clockDouble?2:1);
+  for(let i=0;i<ticks;i++)if(APP.G.timeDeck.length>0)APP.G.discard.push(APP.G.timeDeck.pop());
+  APP.G.timeLeft=APP.G.timeDeck.length;
+  if(APP.G.timeLeft<=0){
+    endGame('lose','EXPLOSIÓN CATASTRÓFICA','El tiempo se agotó.');
+  }
+}
+
+function checkWin(){
+  if(!APP.G.players.every(p=>p.bombDefused))return false;
+  if(APP.G.publicBombs.some(b=>!b.defused))return false;
+  if(!APP.G.specialBomb||!APP.G.specialBomb.defused)return false;
+  endGame('win','¡MISIÓN CUMPLIDA!','Todas las amenazas neutralizadas.');
+  return true;
+}
+
+function endGame(type,title,msg){
+  document.getElementById('m-title').className='mtitle '+type;
+  document.getElementById('m-title').textContent=title;
+  document.getElementById('m-msg').textContent=msg;
+  document.getElementById('modal-ov').style.display='flex';
+  wsSend('end_game',{result:type,message:msg});
+}
+
+// Card selection
+function selectCard(idx){
+  if(!isMyTurn()&&!APP.faultRound&&!APP.crisisMode)return;
+  // Fault round
+  if(APP.faultRound){
+    let hId=APP.myId;
+    if(APP.faultOrder[APP.faultRoundIdx]!==hId)return;
+    let p=APP.G.players.find(x=>x.id===hId);
+    let card=p.hand[idx];
+    if(!card||card.type!=='cable')return;
+    if(APP.faultSelected.length===0){APP.faultSelected.push(idx);}
+    else{
+      let first=p.hand[APP.faultSelected[0]];
+      if(!first||card.color!==first.color){alert('Mismo color.');return;}
+      let i=APP.faultSelected.indexOf(idx);
+      if(i>=0)APP.faultSelected.splice(i,1);
+      else if(APP.faultSelected.length<APP.faultPending)APP.faultSelected.push(idx);
+    }
+    render();return;
+  }
+  // Crisis own hand
+  if(APP.crisisMode&&APP.crisisStealer===APP.myId){
+    let p=myPlayer();
+    let card=p.hand[idx];
+    if(!card||card.type==='fault'||card.type==='bomb'||card.type==='special')return;
+    let i=APP.crisisOwnSelected.indexOf(idx);
+    if(i>=0)APP.crisisOwnSelected.splice(i,1);
+    else APP.crisisOwnSelected.push(idx);
+    render();return;
+  }
+  if(!isMyTurn())return;
+  if(APP.discardMode){
+    let i=APP.discardSelected.indexOf(idx);
+    if(i>=0)APP.discardSelected.splice(i,1);
+    else if(APP.discardSelected.length<APP.discardCount)APP.discardSelected.push(idx);
+    render();return;
+  }
+  if(APP.G.phase!=='action')return;
+  let i=APP.selectedCards.indexOf(idx);
+  if(i>=0)APP.selectedCards.splice(i,1);
+  else APP.selectedCards.push(idx);
+  render();
+}
+
+function selectStolenCard(idx){
+  if(!APP.crisisMode||APP.crisisStealer!==APP.myId)return;
+  let i=APP.selectedCards.indexOf(idx);
+  if(i>=0)APP.selectedCards.splice(i,1);
+  else if(APP.selectedCards.length<2)APP.selectedCards.push(idx);
+  render();
+}
+
+function doDefusePersonal(){
+  let G=APP.G,p=myPlayer();
+  if(G.phase!=='action'||p.bombDefused||G.actionsDone>=G.maxActions)return;
+  if(!canDefuse(p.hand,p.bomb)){log('Cables insuficientes.','lw');render();return;}
+  p.hand=removeCards(p.hand,neededCards(p.hand,p.bomb));
+  p.bombDefused=true;G.actionsDone++;APP.selectedCards=[];
+  log(`${p.name} desactiva su bomba personal!`,'lo');
+  if(checkWin())return;
+  pushGameState(`${p.name} desactivó su bomba personal.`);render();
+}
+
+function doDefusePublic(idx){
+  let G=APP.G,p=myPlayer(),b=G.publicBombs[idx];
+  if(G.phase!=='action'||!b||b.defused||G.actionsDone>=G.maxActions)return;
+  if(!canDefuse(p.hand,b)){log('Cables insuficientes.','lw');render();return;}
+  p.hand=removeCards(p.hand,neededCards(p.hand,b));
+  b.defused=true;G.actionsDone++;APP.selectedCards=[];
+  log(`${p.name} desactiva ${b.label}!`,'lo');
+  if(checkWin())return;
+  pushGameState(`${p.name} desactivó bomba pública ${b.label}.`);render();
+}
+
+function doDefuseSpecial(){
+  let G=APP.G,p=myPlayer(),b=G.specialBomb;
+  if(G.phase!=='action'||!b||b.defused||G.actionsDone>=G.maxActions)return;
+  if(!canDefuse(p.hand,b)){log('Cables insuficientes para la Especial.','lw');render();return;}
+  p.hand=removeCards(p.hand,neededCards(p.hand,b));
+  b.defused=true;G.clockDouble=false;G.actionsDone++;APP.selectedCards=[];
+  log('☢ ¡¡BOMBA ESPECIAL DESACTIVADA!!','lm');
+  if(checkWin())return;
+  pushGameState(`${p.name} desactivó la Bomba Especial.`);render();
+}
+
+function doUseEffect(){
+  let G=APP.G,p=myPlayer();
+  if(G.phase!=='action'||G.actionsDone>=G.maxActions)return;
+  if(APP.selectedCards.length===0){log('Seleccioná una carta.','lw');render();return;}
+  let idx=APP.selectedCards[0],card=p.hand[idx];
+  if(!card||card.type!=='cable'||card.color==='white'){log('El Comodín solo sirve para desactivar.','lw');render();return;}
+  p.hand.splice(idx,1);APP.selectedCards=[];G.actionsDone++;
+  applyEffect(card,p);
+}
+
+function applyEffect(card,player){
+  let G=APP.G;
+  if(card.color==='red'){
+    G.skipClock=true;
+    log(`${player.name} usa Rojo — reloj congelado este turno.`,'lo');
+    pushGameState(`${player.name} usó Rojo.`);render();
+  } else if(card.color==='green'){
+    let drawn=G.gameDeck.splice(0,2);
+    let bombs=drawn.filter(c=>c.type==='bomb');
+    let faults=drawn.filter(c=>c.type==='fault');
+    let specials=drawn.filter(c=>c.type==='special');
+    let cables=drawn.filter(c=>c.type==='cable');
+    player.hand.push(...cables);
+    if(player.hand.length>G.maxHand)player.hand=player.hand.slice(0,G.maxHand);
+    log(`${player.name} usa Verde — roba 2 cartas.`,'lo');
+    if(specials.length>0){
+      G.specialBomb=specials[0];
+      announceColors();
+      log('☢ Bomba Especial aparece con Verde — crisis!','lm');
+      startCrisis(specials[0],player.id);
+      pushGameState(`${player.name} robó la Bomba Especial con Verde.`);return;
+    }
+    if(bombs.length>0){
+      announceColors();
+      log('⚠️ Bomba con Verde — crisis!','lb');
+      startCrisis(bombs[0],player.id);
+      pushGameState(`${player.name} robó una bomba con Verde.`);return;
+    }
+    if(faults.length>0){
+      log('⚠️ Falla con Verde.','lw');
+      startFaultRound(faults[0],player.id,true);
+      pushGameState(`${player.name} robó una falla con Verde.`);return;
+    }
+    pushGameState(`${player.name} usó Verde.`);render();
+  } else if(card.color==='blue'){
+    let top3=G.gameDeck.slice(0,3).map(c=>c.label||c.color).join(', ');
+    log(`${player.name} usa Azul — próximas 3: ${top3}`,'li');
+    pushGameState(`${player.name} usó Azul.`);render();
+  }
+}
+
+function doSkipToDraw(){
+  if(!isMyTurn())return;
+  APP.G.phase='draw';APP.selectedCards=[];
+  pushGameState(`${myPlayer().name} pasa a robo.`);render();
+}
+
+function doDrawCard(){
+  let G=APP.G,p=myPlayer();
+  if(G.phase!=='draw'||!isMyTurn())return;
+  if(G.gameDeck.length===0){endGame('lose','SISTEMA COLAPSADO','El mazo se agotó.');return;}
+  let card=G.gameDeck.shift();
+  log(`${p.name} roba: ${card.label||card.color}`,'le');
+
+  if(card.type==='fault'){
+    startFaultRound(card,G.currentTurn,false);
+    pushGameState(`${p.name} robó una Falla.`);return;
+  }
+  if(card.type==='special'){
+    G.specialBomb=card;announceColors();
+    log('☢ ¡BOMBA ESPECIAL REVELADA!','lm');
+    startCrisis(card,G.currentTurn);
+    pushGameState(`${p.name} reveló la Bomba Especial.`);return;
+  }
+  if(card.type==='bomb'){
+    announceColors();
+    startCrisis(card,G.currentTurn);
+    pushGameState(`${p.name} robó una bomba.`);return;
+  }
+  p.hand.push(card);
+  if(p.hand.length>G.maxHand){
+    APP.discardMode=true;
+    APP.discardCount=p.hand.length-G.maxHand;
+    APP.discardSelected=[];
+    log(`${p.name} debe descartar ${APP.discardCount} carta(s).`,'lw');
+    pushGameState(`${p.name} robó (mano llena).`);render();return;
+  }
+  G.phase='hint';
+  pushGameState(`${p.name} robó una carta.`);render();
+}
+
+function doConfirmDiscard(){
+  if(APP.discardSelected.length<APP.discardCount){log('Elegí más cartas.','lw');render();return;}
+  let G=APP.G,p=myPlayer();
+  let idxs=[...APP.discardSelected].sort((a,b)=>b-a);
+  for(let i of idxs)G.discard.push(p.hand.splice(i,1)[0]);
+  log(`${p.name} descartó ${idxs.length} carta(s).`,'le');
+  APP.discardMode=false;APP.discardCount=0;APP.discardSelected=[];
+  G.phase='hint';
+  pushGameState(`${p.name} descartó cartas.`);render();
+}
+
+function doSubmitHint(){
+  let txt=APP.hintText.trim();
+  if(!txt){log('Ingresá una palabra.','lw');render();return;}
+  if(txt.split(/\s+/).length>1){log('Solo una palabra.','lw');render();return;}
+  let p=myPlayer();
+  APP.hints.push({playerName:p.name,text:txt});
+  if(APP.hints.length>10)APP.hints.shift();
+  wsSend('hint',{text:txt});  // broadcast to all
+  log(`${p.name} dice: "${txt}"`,'lo');
+  APP.G.phase='clock';APP.hintText='';
+  pushGameState(`${p.name} dio su pista.`);render();
+}
+
+function doSkipHint(){
+  // Only allowed when fault/bomb interrupted (no hint rule)
+  APP.G.phase='clock';APP.hintText='';
+  pushGameState(`${myPlayer().name} omite pista (interrupción).`);render();
+}
+
+function doAdvanceClock(){
+  let G=APP.G,p=myPlayer();
+  if(G.phase!=='clock'||!isMyTurn())return;
+  if(G.skipClock){
+    G.skipClock=false;log('🔴 Reloj congelado este turno.','lo');
+  } else {
+    tickTime(1);if(G.gameOver)return;
+    log(`Reloj: ${G.timeLeft} seg.${G.clockDouble?' (×2!)':''}`,'le');
+  }
+  G.phase='action';G.actionsDone=0;G.skipClock=false;APP.selectedCards=[];
+  G.currentTurn=(G.currentTurn+1)%G.numPlayers;
+  pushGameState(`Turno de ${G.players[G.currentTurn].name}.`);render();
+}
+
+// ── CRISIS ──────────────────────────────────────────────────────────────────
+function announceColors(){
+  for(let pl of APP.G.players){
+    let cnt=countCols(pl.hand);
+    let cols=Object.keys(cnt).filter(c=>cnt[c]>0).map(c=>CN[c]||c).join(', ')||'ninguno';
+    log(`${pl.name}: ${cols}`,'li');
+  }
+}
+
+function startCrisis(bomb,stealerIdx){
+  APP.crisisMode=true;APP.crisisBomb=bomb;APP.crisisStealer=APP.G.players[stealerIdx]?.id||null;
+  APP.selectedCards=[];APP.crisisOwnSelected=[];
+  log(`💣 ¡CRISIS! ${bomb.label}`,'lb');
+  render();
+}
+
+function doCrisisAttempt(){
+  let G=APP.G;
+  let stealer=G.players.find(p=>p.id===APP.crisisStealer);
+  let other=G.players.find(p=>p.id!==stealer.id);
+  let ownCards=APP.crisisOwnSelected.length>0
+    ?APP.crisisOwnSelected.map(i=>stealer.hand[i]).filter(Boolean)
+    :[...stealer.hand];
+  let stolen=other?APP.selectedCards.map(i=>other.hand[i]).filter(Boolean):[];
+  let combined=[...ownCards,...stolen];
+  let bomb=APP.crisisBomb;
+  let isSpecial=bomb.type==='special';
+
+  if(canDefuse(combined,bomb)){
+    let rem=neededCards(combined,bomb);
+    for(let card of stolen){let col=card.color;if((rem[col]||0)>0){rem[col]--;let i=other.hand.indexOf(card);if(i>=0)other.hand.splice(i,1);}}
+    if(APP.crisisOwnSelected.length>0){
+      let idxs=[...APP.crisisOwnSelected].sort((a,b)=>b-a);
+      for(let i of idxs)stealer.hand.splice(i,1);
+    } else {stealer.hand=removeCards(stealer.hand,rem);}
+    bomb.defused=true;
+    if(isSpecial){G.specialBomb.defused=true;G.clockDouble=false;log('☢ ¡ESPECIAL DESACTIVADA! Reloj congelado.','lm');}
+    else{if(!G.publicBombs.includes(bomb))G.publicBombs.push(bomb);log('¡BOMBA DESACTIVADA! Reloj congelado.','lo');}
+    APP.crisisMode=false;APP.crisisBomb=null;APP.selectedCards=[];APP.crisisOwnSelected=[];
+    if(checkWin())return;
+    G.phase='hint';
+    pushGameState(`${stealer.name} desactivó la bomba a ciegas.`);render();return;
+  }
+  let pen=G.numPlayers===2?7:10;
+  log(`💥 FALLO — −${pen} seg.`,'lb');
+  if(isSpecial){G.specialFailed=true;G.clockDouble=true;if(!G.specialBomb)G.specialBomb=bomb;log('⚠ Reloj ×2 por turno.','lm');}
+  else{bomb.defused=false;if(!G.publicBombs.includes(bomb))G.publicBombs.push(bomb);}
+  tickTime(pen);if(APP.G.timeLeft<=0)return;
+  APP.crisisMode=false;APP.crisisBomb=null;APP.selectedCards=[];APP.crisisOwnSelected=[];
+  G.phase='hint';
+  pushGameState(`${stealer.name} falló la desactivación.`);render();
+}
+
+function doCrisisAdopt(){
+  let G=APP.G,bomb=APP.crisisBomb;
+  bomb.defused=false;
+  if(bomb.type==='special'&&!G.specialBomb)G.specialBomb=bomb;
+  else if(!G.publicBombs.includes(bomb))G.publicBombs.push(bomb);
+  log('Bomba adoptada para después.','lw');
+  APP.crisisMode=false;APP.crisisBomb=null;APP.selectedCards=[];APP.crisisOwnSelected=[];
+  G.phase='hint';
+  pushGameState(`${myPlayer().name} adoptó la bomba.`);render();
+}
+
+// ── FAULT ───────────────────────────────────────────────────────────────────
+function startFaultRound(fault,drawerIdx,fromEffect){
+  let drawer=APP.G.players[drawerIdx];
+  let drawerCables=drawer.hand.filter(c=>c.type==='cable');
+  if(drawerCables.length===0){
+    log(`${drawer.name} no tiene cartas — falla inmediata. −4 seg.`,'lb');
+    tickTime(4);if(APP.G.timeLeft<=0)return;
+    APP.G.phase='hint';pushGameState('Falla activada automáticamente.');render();return;
+  }
+  APP.faultMode=fault;APP.faultRound=true;APP.faultPending=3;
+  APP.faultContrib=[];APP.faultSelected=[];APP.faultFromEffect=fromEffect||false;
+  APP.faultConsult=false;APP.faultConsultColor=null;APP.faultConsultReplies=[];APP.faultConsultDone=false;
+  APP.faultOrder=[];
+  for(let i=0;i<APP.G.numPlayers;i++) APP.faultOrder.push((drawerIdx+i)%APP.G.numPlayers);
+  APP.faultRoundIdx=0;
+  log('⚡ FALLA — el equipo aporta 3 cables del mismo color.','lw');
+  log(`Orden: ${APP.faultOrder.map(i=>APP.G.players[i].name).join(' → ')}. El primero elige el color.`,'lw');
+  pushGameState('Ronda de Falla iniciada.');render();
+}
+
+function doFaultAsk(color){
+  if(!APP.faultConsult||APP.faultConsultDone)return;
+  APP.faultConsultColor=color;APP.faultConsultReplies=[];
+  log(`${myPlayer().name} pregunta: "¿${CN[color]||color}?"`,'lw');
+  for(let pl of APP.G.players){
+    if(pl.id===APP.myId)continue;
+    let cnt=countCols(pl.hand);
+    let have=cnt[color]||0;
+    let maxH=Math.max(0,...Object.entries(cnt).filter(([c])=>c!=='white').map(([,n])=>n));
+    let yes=have>0&&have>=maxH;
+    APP.faultConsultReplies.push({name:pl.name,color,yes});
+    log(`${pl.name}: ${yes?'✓ SÍ':'✗ NO'}`,'li');
+  }
+  APP.faultConsultDone=true;render();
+}
+
+function doFaultSkipConsult(){APP.faultConsult=false;APP.faultConsultDone=false;APP.faultConsultColor=null;APP.faultConsultReplies=[];render();}
+
+function doFaultContrib(){
+  let hId=APP.myId;
+  if(APP.faultOrder[APP.faultRoundIdx]!==hId)return;
+  APP.faultConsult=false;APP.faultConsultDone=false;
+  let p=APP.G.players.find(x=>x.id===hId);
+  let sel=APP.faultSelected.map(i=>p.hand[i]).filter(Boolean);
+  if(sel.length>0&&!sel.every(c=>c.color===sel[0].color)){log('Mismo color.','lw');render();return;}
+  if(APP.faultRoundIdx===0&&sel.length===0){log('El primero debe aportar al menos 1 carta.','lw');render();return;}
+  let idxs=[...APP.faultSelected].sort((a,b)=>b-a);
+  for(let i of idxs)APP.G.discard.push(p.hand.splice(i,1)[0]);
+  APP.faultContrib.push({playerId:hId,count:sel.length});
+  APP.faultPending-=sel.length;APP.faultSelected=[];
+  log(`${p.name} aporta ${sel.length} — faltan ${APP.faultPending}.`,'lo');
+  advanceFaultRound();
+}
+
+function doFaultPass(){
+  if(APP.faultOrder[APP.faultRoundIdx]!==APP.myId)return;
+  if(APP.faultRoundIdx===0){log('El primero debe aportar al menos 1 carta.','lw');render();return;}
+  APP.faultConsult=false;APP.faultConsultDone=false;
+  APP.faultContrib.push({playerId:APP.myId,count:0});APP.faultSelected=[];
+  log(`${myPlayer().name} pasa.`,'le');
+  advanceFaultRound();
+}
+
+function advanceFaultRound(){
+  if(APP.faultPending<=0){log('¡FALLA NEUTRALIZADA!','lo');endFaultRound(true);return;}
+  APP.faultRoundIdx++;
+  if(APP.faultRoundIdx>=APP.faultOrder.length){
+    log(`Falla no resuelta — ${3-APP.faultPending}/3 cables. −4 seg.`,'lb');
+    endFaultRound(false);return;
+  }
+  // Next player in order — push state so they can see it's their turn
+  pushGameState(`Falla: turno de ${APP.G.players[APP.faultOrder[APP.faultRoundIdx]].name}.`);render();
+}
+
+function endFaultRound(success){
+  if(!success){tickTime(4);if(APP.G.timeLeft<=0)return;}
+  let fromEffect=APP.faultFromEffect||false;
+  APP.faultMode=null;APP.faultRound=false;APP.faultOrder=[];APP.faultRoundIdx=0;
+  APP.faultContrib=[];APP.faultSelected=[];APP.faultPending=0;
+  APP.faultConsult=false;APP.faultConsultColor=null;APP.faultConsultReplies=[];APP.faultConsultDone=false;
+  APP.G.phase=fromEffect?'action':'hint';
+  pushGameState(`Falla ${success?'neutralizada':'activada'}.`);render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+function renderStatus(){render();}
+
+function render(){
+  let root=document.getElementById('root');
+  if(!root)return;
+  if(APP.screen==='lobby'){root.innerHTML=buildLobbyUI();return;}
+  if(APP.screen==='game'){root.innerHTML=buildGameUI();updateTimer();return;}
+}
+
+function updateTimer(){
+  let fill=document.getElementById('tfill'),cnt=document.getElementById('tcnt');
+  if(!fill||!cnt||!APP.G)return;
+  let G=APP.G;
+  let max=Math.max(G.timeDeck.length+G.discard.length,G.timeLeft,1);
+  let pct=Math.max(0,Math.min(100,(G.timeLeft/max)*100));
+  let col=pct>50?'var(--g)':pct>25?'var(--orange)':'var(--r)';
+  fill.style.cssText=`width:${pct}%;background:${col};height:100%;`;
+  cnt.style.color=col;cnt.textContent=G.timeLeft;
+}
+
+function buildLobbyUI(){
+  const wsColor=APP.wsStatus==='connected'?'ws-ok':APP.wsStatus==='connecting'?'ws-connecting':'ws-err';
+  const wsLabel=APP.wsStatus==='connected'?'CONECTADO':APP.wsStatus==='connecting'?'CONECTANDO...':'DESCONECTADO';
+
+  // If we're in a room already (waiting for game)
+  if(APP.roomId){
+    const players=APP.roomPlayers||[];
+    return `
+    <div class="lobby">
+      <div class="lobby-panel">
+        <div class="ptitle">SALA CREADA</div>
+        <div class="room-code">${APP.roomCode||'——'}</div>
+        <div style="font-size:11px;color:var(--txd);text-align:center;margin-bottom:12px">Compartí este código con tus compañeros</div>
+        <div style="font-size:9px;color:var(--txd);text-align:right;margin-bottom:8px">
+          <span class="ws-status ${wsColor}">${wsLabel}</span>
+        </div>
+        <div class="ptitle">JUGADORES (${players.length}/6)</div>
+        <div class="player-list">
+          ${players.map(pl=>`
+            <div class="player-item">
+              <div class="dot ${pl.connected?'on':'off'}"></div>
+              <span style="color:${pl.id===APP.myId?'var(--g)':'var(--txt)'}">${pl.name}${pl.isHost?' ★':''}</span>
+              ${pl.id===APP.myId?`<span style="font-size:9px;color:var(--txd);margin-left:auto">(vos)</span>`:''}
+            </div>`).join('')}
+        </div>
+        ${APP.isHost?`
+        <div class="brow" style="margin-top:14px">
+          <button class="btn primary" onclick="doStartGame()" ${players.length<2?'disabled':''}>▶ INICIAR PARTIDA</button>
+          <span style="font-size:10px;color:var(--txd);margin-left:8px">Mín. 2 jugadores</span>
+        </div>`:
+        `<div style="font-size:11px;color:var(--txd);margin-top:14px;text-align:center">Esperando que el host inicie la partida...</div>`}
+      </div>
+      ${appLog.length>0?`
+      <div class="panel">
+        <div class="ptitle">LOG</div>
+        <div class="log-area">${appLog.slice(0,6).map(l=>`<div class="${l.cls}">&gt; ${l.msg}</div>`).join('')}</div>
+      </div>`:''}
+    </div>`;
+  }
+
+  // Landing screen
+  return `
+  <div class="lobby">
+    <div class="lobby-panel">
+      <div class="ptitle">CREAR SALA</div>
+      <input class="field" id="inp-name" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:10px">
+      <button class="btn primary" style="width:100%" onclick="doCreateRoom()">+ CREAR NUEVA SALA</button>
+    </div>
+    <div class="lobby-panel">
+      <div class="ptitle">UNIRSE A SALA</div>
+      <input class="field" id="inp-name2" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:8px"
+        oninput="document.getElementById('inp-name').value=this.value">
+      <input class="field" id="inp-code" type="text" maxlength="6" placeholder="Código de sala (6 letras)..." style="margin-bottom:10px"
+        oninput="this.value=this.value.toUpperCase()">
+      <button class="btn blue-btn" style="width:100%" onclick="doJoinWithName()">→ UNIRSE A SALA</button>
+    </div>
+    <div style="font-size:10px;color:var(--txd);line-height:1.8;text-align:center;padding:0 20px">
+      <span style="color:var(--g)">🔴 Rojo</span> reloj congelado &nbsp;|&nbsp; <span style="color:var(--g)">🟢 Verde</span> roba 2 &nbsp;|&nbsp; <span style="color:var(--g)">🔵 Azul</span> ve 3 próximas<br>
+      <span style="color:#ff88ee">★ La Bomba Especial está oculta. Si falla el primer intento, el reloj va al doble.</span>
+    </div>
+  </div>`;
+}
+
+function doJoinWithName(){
+  let n2=document.getElementById('inp-name2');
+  if(n2&&n2.value){document.getElementById('inp-name').value=n2.value;}
+  doJoinRoom();
+}
+
+function buildGameUI(){
+  let G=APP.G;
+  if(!G)return'';
+  let ph=G.phase;
+  let iAm=myPlayer();
+  let isMyT=isMyTurn();
+  let cur=curPlayer();
+
+  let phSteps=['action','draw','hint','clock'];
+  let phLabels=['ACCIÓN','ROBO','PISTA','RELOJ'];
+  let phBar=`<div class="pbar">
+    ${phSteps.map((s,i)=>`<span class="pstep ${s===ph?'active':phSteps.indexOf(ph)>i?'done':''}">${phLabels[i]}</span>${i<3?`<span style="color:var(--bor)">→</span>`:''}`).join('')}
+    <span style="flex:1"></span>
+    <span class="sbadge ${isMyT?'bg':'by'}">${isMyT?'TU TURNO':cur?cur.name:'—'}</span>
+    ${G.clockDouble?`<span class="sbadge" style="border:1px solid #ff00cc;color:#ff00cc;margin-left:4px">RELOJ ×2 ☢</span>`:''}
+    <span style="font-size:9px;color:var(--txd);margin-left:10px" class="ws-status ${APP.wsStatus==='connected'?'ws-ok':'ws-err'}">${APP.wsStatus.toUpperCase()}</span>
+  </div>`;
+
+  let tBar=`<div class="tbar">
+    <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--txd);letter-spacing:2px">TIEMPO</span>
+    <div class="ttrack"><div id="tfill"></div></div>
+    <span id="tcnt" class="tcnt">${G.timeLeft}</span>
+    <span style="font-size:10px;color:var(--txd)">SEG</span>
+    ${G.skipClock?`<span style="font-size:10px;color:var(--r);margin-left:8px;border:1px solid var(--rd);padding:1px 7px;border-radius:2px">🔴 CONGELADO</span>`:''}
+    <span style="font-size:10px;color:var(--txd);margin-left:12px">MAZO: <span style="color:var(--txt)">${G.gameDeck.length}</span></span>
+    <span style="font-size:10px;color:var(--txd)">BOMBAS OCULTAS: <span style="color:var(--txt)">${G.gameDeck.filter(c=>c.type==='bomb'||c.type==='special').length}</span></span>
+  </div>`;
+
+  // ── SPECIAL MODES ──────────────────────────────────────────────────────
+  let special='';
+
+  if(APP.discardMode&&isMyT){
+    let p=iAm;
+    let sel=APP.discardSelected.map(i=>p.hand[i]).filter(Boolean);
+    special=`<div class="discard-box">✋ MANO LLENA — elegí ${APP.discardCount} carta(s) para descartar.
+      <div style="margin:6px 0">Seleccionadas: ${sel.map(c=>`<span style="color:var(--${c.color==='white'?'w':c.color})">${c.label}</span>`).join(', ')||'—'}</div>
+      <div class="brow"><button class="btn warn" onclick="doConfirmDiscard()" ${APP.discardSelected.length<APP.discardCount?'disabled':''}>✓ DESCARTAR (${APP.discardSelected.length}/${APP.discardCount})</button></div>
+    </div>`;
+  }
+
+  if(APP.crisisMode&&APP.crisisBomb){
+    let stealer=G.players.find(p=>p.id===APP.crisisStealer);
+    let iAmStealer=stealer&&stealer.id===APP.myId;
+    let other=G.players.find(p=>p.id!==stealer?.id);
+    let ownCards=iAmStealer&&APP.crisisOwnSelected.length>0
+      ?APP.crisisOwnSelected.map(i=>stealer.hand[i]).filter(Boolean):[...stealer?.hand||[]];
+    let stolen=other?APP.selectedCards.map(i=>other.hand[i]).filter(Boolean):[];
+    let combined=[...ownCards,...stolen];
+    let possible=canDefuse(combined,APP.crisisBomb);
+    let isSpecial=APP.crisisBomb.type==='special';
+
+    let stealHTML=other?other.hand.map((_,i)=>iAmStealer
+      ?`<div class="cback ${APP.selectedCards.includes(i)?'sel':''}" onclick="selectStolenCard(${i})">?</div>`
+      :`<div class="cback">?</div>`).join(''):'';
+
+    let ownHandHTML='';
+    if(iAmStealer&&stealer){
+      ownHandHTML=stealer.hand.map((card,i)=>{
+        let sel=APP.crisisOwnSelected.includes(i);
+        let col=card.type==='fault'?'fault':card.type==='bomb'?'bomb-c':card.type==='special'?'special-c':card.color;
+        let dim=(!sel&&APP.crisisOwnSelected.length>0)?'opacity:.5;':'';
+        return `<div class="card ${col} ${sel?'selected':''}" style="${dim}" onclick="selectCard(${i})">
+          <div class="cicon">${CI[card.type]||CI[card.color]||'■'}</div>
+          <div class="clbl">${(card.label||card.color||'').substring(0,7)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    special+=`<div class="${isSpecial?'special-box':'crisis-box'}">
+      ${isSpecial?'☢':'💣'} ¡CRISIS! <strong>${APP.crisisBomb.label}</strong> — ${reqHTML(APP.crisisBomb)}<br>
+      <span style="font-size:10px;opacity:.8">Solo anunciar colores (sin cantidades).${isSpecial?' ¡Esta es la Bomba Especial!':''}</span>
+      ${iAmStealer?`
+      <div style="margin:8px 0 4px;font-size:10px">1. Tus cartas (seleccioná las que querés usar):</div>
+      <div class="hand" style="margin-bottom:8px">${ownHandHTML}</div>
+      <div style="font-size:10px;margin:4px 0">2. Robá 1-2 a ciegas de ${other?other.name:'compañero'}:</div>
+      <div class="hand" style="margin:6px 0">${stealHTML}</div>
+      <div class="brow">
+        <button class="btn primary" onclick="doCrisisAttempt()">⚡ DESACTIVAR ${possible?'(POSIBLE)':'(RIESGO)'}</button>
+        <button class="btn" onclick="doCrisisAdopt()">Adoptar para después</button>
+      </div>`:`
+      <div style="font-size:11px;margin-top:8px;color:var(--txd)">${stealer?stealer.name:''} está robando cartas a ciegas de tu mano...</div>
+      <div class="hand" style="margin:6px 0">${stealHTML}</div>`}
+    </div>`;
+  }
+
+  if(APP.faultRound&&APP.faultMode){
+    let actingId=APP.faultOrder[APP.faultRoundIdx];
+    let actingPlayer=G.players.find(p=>p.id===actingId);
+    let isMySlot=actingId===APP.myId;
+    let contribBar=APP.faultOrder.map((pid,i)=>{
+      let pl=G.players.find(p=>p.id===pid);
+      let contrib=APP.faultContrib.find(c=>c.playerId===pid);
+      let status=contrib?`✓ ${contrib.count}c`:i===APP.faultRoundIdx?'⬅ AHORA':'...';
+      let col=contrib?'var(--gd)':i===APP.faultRoundIdx?'var(--orange)':'var(--txd)';
+      return `<span style="color:${col};font-size:10px">${pl?.name||'?'}: ${status}</span>`;
+    }).join(' &nbsp;|&nbsp; ');
+
+    let replyHTML='';
+    if(APP.faultConsultColor&&APP.faultConsultReplies.length>0){
+      replyHTML=`<div style="margin:6px 0;padding:5px 8px;background:rgba(0,0,0,.2);border-radius:2px;font-size:10px">
+        Preguntaste ${CN[APP.faultConsultColor]||APP.faultConsultColor}:
+        ${APP.faultConsultReplies.map(r=>`<span style="color:${r.yes?'var(--g)':'var(--txd)'}"> ${r.name}: ${r.yes?'✓ SÍ':'✗ NO'}</span>`).join(' ')}
+      </div>`;
+    }
+
+    let consultHTML='';
+    if(APP.faultConsult&&isMySlot){
+      let askCols=['red','green','blue'];
+      let askBtns=askCols.map(c=>`<button class="btn ${APP.faultConsultColor===c?'primary':''}" onclick="doFaultAsk('${c}')" style="font-size:10px;border-color:var(--${c});color:var(--${c})">${CN[c]}</button>`).join('');
+      consultHTML=`<div style="margin:6px 0;font-size:10px;color:var(--orange)">¿Consultar al equipo antes de aportar?</div>
+        <div class="brow">${askBtns}</div>
+        ${replyHTML}
+        <div class="brow" style="margin-top:8px"><button class="btn warn" onclick="doFaultSkipConsult()">Jugar sin consultar →</button></div>`;
+    } else if(isMySlot){
+      let isDrawer=APP.faultRoundIdx===0;
+      let fSel=APP.faultSelected.map(i=>iAm?.hand[i]).filter(Boolean);
+      consultHTML=`${replyHTML}
+        <span style="font-size:10px;color:var(--orange)">Tu turno — seleccioná ${isDrawer?'al menos 1':''} cable(s) del mismo color en tu mano.</span>
+        ${fSel.length>0?`<div style="font-size:10px;margin-top:6px">Seleccionado: ${fSel.map(c=>`<span style="color:var(--${c.color})">${c.label}</span>`).join(', ')}</div>`:''}
+        <div class="brow">
+          <button class="btn warn" onclick="doFaultContrib()">${APP.faultSelected.length>0?`Aportar ${APP.faultSelected.length}`:'Aportar 0'}</button>
+          ${!isDrawer?`<button class="btn" onclick="doFaultPass()">Pasar (0)</button>`:''}
+        </div>`;
+    } else {
+      consultHTML=`<span style="font-size:10px;color:var(--txd)">${actingPlayer?actingPlayer.name+' está decidiendo...':'Esperando...'}</span>`;
+    }
+
+    special+=`<div class="fault-box">
+      ⚡ FALLA — 3 cables del mismo color &nbsp;|&nbsp; Faltan: <strong>${APP.faultPending}</strong>/3
+      <div style="margin:5px 0 4px;font-size:10px">${contribBar}</div>
+      ${consultHTML}
+    </div>`;
+  }
+
+  // ── HINT SECTION ─────────────────────────────────────────────────────────
+  let hintSection='';
+  if(ph==='hint'&&isMyT&&!APP.crisisMode&&!APP.faultRound){
+    hintSection=`<div style="background:rgba(0,255,136,.04);border:1px solid var(--gd);border-radius:4px;padding:10px 14px;margin-bottom:10px;">
+      <div class="ptitle" style="color:var(--gd);margin-bottom:8px">💬 PISTA VERBAL OBLIGATORIA</div>
+      <div style="font-size:10px;color:var(--txd);margin-bottom:8px">Una sola palabra: color, cantidad o cualidad (Listo, Suficiente, Crítico, Ninguno...)</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="hint-input" id="hint-in" type="text" maxlength="20" placeholder="Ej: Verde, Tres, Listo..."
+          value="${APP.hintText||''}"
+          oninput="APP.hintText=this.value"
+          onkeydown="if(event.key==='Enter')doSubmitHint()">
+        <button class="btn primary" onclick="doSubmitHint()">→ DAR</button>
+      </div>
+    </div>`;
+  } else if(ph==='hint'&&!isMyT&&!APP.crisisMode&&!APP.faultRound){
+    hintSection=`<div style="background:rgba(0,255,136,.04);border:1px dashed var(--gd);border-radius:4px;padding:8px 14px;margin-bottom:10px;font-size:11px;color:var(--txd)">
+      💬 ${cur?cur.name:'El jugador activo'} está escribiendo su pista...
+    </div>`;
+  }
+
+  // ── HINTS LOG ──────────────────────────────────────────────────────────
+  let hintsHTML='';
+  if(APP.hints.length>0){
+    hintsHTML=`<div style="font-size:10px;color:var(--txd);margin-bottom:8px;padding:6px 10px;background:rgba(0,255,136,.03);border-radius:4px;border:1px solid var(--bor)">
+      💬 ${APP.hints.slice(-5).map(h=>`<span style="color:var(--g)">${h.playerName}</span>: "${h.text}"`).join(' → ')}
+    </div>`;
+  }
+
+  // ── PLAYER PANELS ──────────────────────────────────────────────────────
+  let panels='';
+  for(let pl of G.players){
+    let isActive=G.currentTurn===G.players.indexOf(pl);
+    let isMe=pl.id===APP.myId;
+    let isFaultActor=APP.faultRound&&APP.faultOrder[APP.faultRoundIdx]===pl.id;
+    let isCrisisStealer=APP.crisisMode&&APP.crisisStealer===pl.id;
+
+    let handHTML='';
+    if(isMe){
+      if(isCrisisStealer){
+        handHTML=`<span style="font-size:11px;color:var(--txd)">↑ Seleccioná en el panel de crisis</span>`;
+      } else {
+        let selArr=APP.discardMode?APP.discardSelected:APP.faultRound?APP.faultSelected:APP.selectedCards;
+        handHTML=pl.hand.map((card,i)=>{
+          let sel=selArr.includes(i);
+          let col=card.type==='fault'?'fault':card.type==='bomb'?'bomb-c':card.type==='special'?'special-c':card.color;
+          let icon=CI[card.type]||CI[card.color]||'■';
+          let dim='';
+          if(APP.faultRound&&isFaultActor&&card.type==='cable'){
+            let first=APP.faultSelected.length>0?pl.hand[APP.faultSelected[0]]:null;
+            if(first&&card.color!==first.color)dim='opacity:.3;pointer-events:none;';
+          }
+          if(APP.discardMode&&!sel&&APP.discardSelected.length>0)dim='opacity:.5;';
+          return `<div class="card ${col} ${sel?'selected':''}" style="${dim}" onclick="selectCard(${i})" title="${card.label||''}">
+            <div class="cicon">${icon}</div><div class="clbl">${(card.label||card.color||'').substring(0,7)}</div>
+          </div>`;
+        }).join('');
+      }
+    } else {
+      // Other players: show backs
+      handHTML=pl.hand.map(()=>`<div class="cback">?</div>`).join('');
+    }
+
+    let actionBtns='';
+    if(isMe&&isMyT&&!APP.crisisMode&&!APP.faultRound&&!APP.discardMode){
+      let canDefPers=!pl.bombDefused&&canDefuse(pl.hand,pl.bomb);
+      let canDefSpec=G.specialBomb&&!G.specialBomb.defused&&canDefuse(pl.hand,G.specialBomb);
+      let canUseEfx=APP.selectedCards.length>0&&G.actionsDone<G.maxActions;
+      let canAct=G.actionsDone<G.maxActions;
+      if(ph==='action'){
+        actionBtns=`<div class="brow">
+          ${canDefPers&&canAct?`<button class="btn primary" onclick="doDefusePersonal()">💣 PERSONAL</button>`:''}
+          ${canDefSpec&&canAct?`<button class="btn" style="border-color:#ff00cc;color:#ff88ee" onclick="doDefuseSpecial()">☢ ESPECIAL</button>`:''}
+          ${canUseEfx?`<button class="btn" onclick="doUseEffect()">⚡ EFECTO (${G.actionsDone}/${G.maxActions})</button>`:''}
+          <button class="btn" onclick="doSkipToDraw()">→ ROBAR</button>
+        </div>`;
+        G.publicBombs.forEach((b,i)=>{
+          if(!b.defused&&canAct&&canDefuse(pl.hand,b)){
+            actionBtns+=`<button class="btn warn" style="font-size:9px;padding:4px 8px;margin-top:4px" onclick="doDefusePublic(${i})">${b.label||'PÚBLICA'}</button>`;
+          }
+        });
+      } else if(ph==='draw'){
+        actionBtns=`<div class="brow"><button class="btn primary" onclick="doDrawCard()">↓ ROBAR CARTA</button></div>`;
+      } else if(ph==='clock'){
+        actionBtns=`<div class="brow"><button class="btn danger" onclick="doAdvanceClock()">⏱ RELOJ${G.clockDouble?' (×2)':''}</button></div>`;
+      }
+    } else if(ph==='hint'&&isMyT&&isMe&&!APP.faultRound&&!APP.crisisMode){
+      // hint buttons rendered above
+    }
+
+    let bombDisp=pl.bombDefused
+      ?`<span style="color:var(--g);font-size:10px;margin-top:4px;display:block">✓ DESACTIVADA</span>`
+      :`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${reqHTML(pl.bomb)}</div>`;
+
+    panels+=`<div class="panel" style="border-color:${isActive?'var(--orange)':isFaultActor?'#ff6600':'var(--bor)'}">
+      <div class="ptitle">${isMe?'👤':'🤖'} ${pl.name} (${pl.hand.length}c)
+        ${isActive?`<span class="sbadge by" style="float:right">ACTIVO</span>`:''}
+        ${isMe?`<span style="float:right;font-size:9px;color:var(--gd)">(vos)</span>`:''}
+      </div>
+      <div class="hand">${handHTML}</div>
+      ${actionBtns?`${actionBtns}`:''}
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--bor)">
+        <div class="ptitle" style="margin-bottom:4px">💣 BOMBA PERSONAL</div>
+        <div class="btier ${pl.bomb.tier}">${pl.bomb.label}</div>
+        ${bombDisp}
+      </div>
+    </div>`;
+  }
+
+  let gridClass=G.numPlayers<=4?'grid2':'grid3';
+
+  let specSlot='';
+  if(G.specialBomb){
+    let b=G.specialBomb;
+    specSlot=b.defused
+      ?`<div class="bslot defused"><div class="btier special">☢ ${b.label}</div><div style="color:var(--g);font-size:10px;margin-top:4px">✓ DESACTIVADA</div></div>`
+      :`<div class="bslot special-slot"><div class="btier special">☢ ${b.label}</div><div style="margin-top:6px">${reqHTML(b)}</div>${G.clockDouble?`<div style="color:#ff00cc;font-size:10px;margin-top:4px">⚠ RELOJ ×2</div>`:''}</div>`;
+  } else {
+    specSlot=`<div class="bslot" style="opacity:.4"><div class="btier special">☢ BOMBA ESPECIAL</div><div style="font-size:10px;color:var(--txd);margin-top:4px">Oculta en el mazo...</div></div>`;
+  }
+
+  let pubSlots=G.publicBombs.length>0
+    ?G.publicBombs.map(b=>b.defused
+      ?`<div class="bslot defused"><div class="btier ${b.tier}">${b.label}</div><div style="color:var(--g);font-size:10px;margin-top:4px">✓ OK</div></div>`
+      :`<div class="bslot active"><div class="btier ${b.tier}">${b.label}</div><div style="margin-top:5px">${reqHTML(b)}</div></div>`
+    ).join('')
+    :`<span style="font-size:11px;color:var(--txd)">Ninguna activa aún</span>`;
+
+  let logH=(appLog||[]).slice(0,14).map(l=>`<div class="${l.cls}">&gt; ${l.msg}</div>`).join('');
+
+  return `${phBar}${tBar}${special}${hintSection}${hintsHTML}
+  <div class="${gridClass}" style="margin-bottom:10px">${panels}</div>
+  <div class="panel" style="margin-bottom:10px">
+    <div class="ptitle">☢ ESPECIAL &amp; 🌐 PÚBLICAS (${G.publicBombs.filter(b=>!b.defused).length} pendientes)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${specSlot}&nbsp;${pubSlots}</div>
+  </div>
+  <div class="panel">
+    <div class="ptitle">📡 LOG</div>
+    <div class="log-area">${logH}</div>
+  </div>`;
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
