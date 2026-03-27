@@ -1,7 +1,7 @@
 {
   "name": "codigo-ultimo-segundo",
   "version": "1.0.0",
-  "description": "Código: Último Segundo — juego cooperativo multijugador en tiempo real",
+  "description": "Código: Último Segundo — juego cooperativo multijugador",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -16,6 +16,6 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   }
 }
