@@ -1467,7 +1467,22 @@ async function tryRestore() {
     MP.roomPlayers = d.room.players;
     if (d.gameState) {
       G = d.gameState;
+      // Ensure all UI state fields exist (older saved states may lack them)
+      G.selectedCards = G.selectedCards || [];
+      G.crisisOwnSelected = G.crisisOwnSelected || [];
+      G.faultSelected = G.faultSelected || [];
+      G.discardSelected = G.discardSelected || [];
+      G.faultOrder = G.faultOrder || [];
+      G.faultContrib = G.faultContrib || [];
+      G.faultConsultReplies = G.faultConsultReplies || [];
+      G.crisisMode = G.crisisMode || false;
+      G.faultRound = G.faultRound || false;
+      G.discardMode = G.discardMode || false;
+      G.passCardMode = G.passCardMode || false;
       appLog = G.log || [];
+      MP.screen = 'game';
+    } else {
+      MP.screen = 'lobby';
     }
     saveSession();
     connectWS();
@@ -1506,8 +1521,23 @@ function handleWS(msg) {
     MP.isHost = data.room.hostId === MP.myId;
     MP.isSpectator = !!data.isSpectator;
     saveSession();
-    if (data.gameState) { G = data.gameState; appLog = G.log || []; MP.screen = 'game'; }
-    else { MP.screen = 'lobby'; }
+    if (data.gameState) {
+      G = data.gameState; appLog = G.log || [];
+      G.selectedCards = G.selectedCards || [];
+      G.crisisOwnSelected = G.crisisOwnSelected || [];
+      G.faultSelected = G.faultSelected || [];
+      G.discardSelected = G.discardSelected || [];
+      G.faultOrder = G.faultOrder || [];
+      G.faultContrib = G.faultContrib || [];
+      G.faultConsultReplies = G.faultConsultReplies || [];
+      G.crisisMode = G.crisisMode || false;
+      G.faultRound = G.faultRound || false;
+      G.discardMode = G.discardMode || false;
+      G.passCardMode = G.passCardMode || false;
+      MP.screen = 'game';
+    } else {
+      MP.screen = 'lobby';
+    }
     renderAll(); return;
   }
   if (type === 'player_connected' || type === 'player_disconnected' || type === 'room_update') {
@@ -1518,12 +1548,30 @@ function handleWS(msg) {
   }
   if (type === 'game_started') {
     G = data.gameState; appLog = G.log || [];
+    G.selectedCards = G.selectedCards || [];
+    G.crisisOwnSelected = G.crisisOwnSelected || [];
+    G.faultSelected = G.faultSelected || [];
+    G.discardSelected = G.discardSelected || [];
+    G.faultOrder = G.faultOrder || [];
+    G.faultContrib = G.faultContrib || [];
+    G.faultConsultReplies = G.faultConsultReplies || [];
+    G.crisisMode = G.crisisMode || false;
+    G.faultRound = G.faultRound || false;
+    G.discardMode = G.discardMode || false;
+    G.passCardMode = G.passCardMode || false;
     MP.roomPlayers = data.room.players;
     MP.screen = 'game';
     log('¡Partida iniciada!', 'lo'); renderAll(); return;
   }
   if (type === 'game_state') {
     G = data.gameState; appLog = G.log || [];
+    G.selectedCards = G.selectedCards || [];
+    G.crisisOwnSelected = G.crisisOwnSelected || [];
+    G.faultSelected = G.faultSelected || [];
+    G.discardSelected = G.discardSelected || [];
+    G.faultOrder = G.faultOrder || [];
+    G.faultContrib = G.faultContrib || [];
+    G.faultConsultReplies = G.faultConsultReplies || [];
     if (data.action) log(data.action, 'lp');
     renderAll(); return;
   }
@@ -1642,6 +1690,17 @@ function buildInitialG(activePlayers) {
     clockDouble: false, discard: [], publicBombs: [], specialBomb: null, specialFailed: false,
     log: [{ msg: 'Partida iniciada — ' + n + ' agentes.', cls: 'lo', ts: Date.now() }],
     turnHistory: [], initialDeckSnapshot: snap, startTime: Date.now(),
+    // ── UI state (kept on G so all clients stay in sync) ──
+    selectedCards: [], crisisOwnSelected: [], faultSelected: [],
+    discardSelected: [], discardMode: false, discardCount: 0,
+    crisisMode: false, crisisBomb: null, crisisStealer: null,
+    faultRound: false, faultOrder: [], faultRoundIdx: 0,
+    faultContrib: [], faultPending: 0, faultMode: null,
+    faultConsult: false, faultConsultColor: null,
+    faultConsultReplies: [], faultConsultDone: false, faultFromEffect: false,
+    passCardMode: false, passCardIdx: null, passCardTarget: null,
+    passCardDone: false,
+    hintText: '',
   };
 }
 
@@ -1968,9 +2027,9 @@ function buildMPUI() {
 }
 
 function buildMyHandHTML(pl) {
-  const selArr = G.discardMode ? G.discardSelected :
-    G.faultRound ? G.faultSelected :
-    G.passCardMode ? [] : G.selectedCards;
+  const selArr = G.discardMode ? (G.discardSelected || []) :
+    G.faultRound ? (G.faultSelected || []) :
+    G.passCardMode ? [] : (G.selectedCards || []);
   return pl.hand.map((card, i) => {
     const sel = selArr.includes(i);
     const isPH = G.passCardMode && G.passCardIdx === i;
@@ -1978,10 +2037,12 @@ function buildMyHandHTML(pl) {
     const icon = CI[card.type] || CI[card.color] || '■';
     let dim = '';
     if (G.faultRound && card.type === 'cable') {
-      const first = G.faultSelected?.length > 0 ? pl.hand[G.faultSelected[0]] : null;
+      const fSel = G.faultSelected || [];
+      const first = fSel.length > 0 ? pl.hand[fSel[0]] : null;
       if (first && card.color !== first.color) dim = 'opacity:.3;pointer-events:none;';
     }
-    if (G.discardMode && !sel && G.discardSelected?.length > 0) dim = 'opacity:.5;';
+    const dSel = G.discardSelected || [];
+    if (G.discardMode && !sel && dSel.length > 0) dim = 'opacity:.5;';
     return '<div class="card ' + col + ' ' + (sel ? 'selected' : '') + ' ' + (isPH ? 'pass-hi' : '') + '" style="' + dim + '" onclick="selectCard(' + i + ')" title="' + (card.label || '') + '">' +
       '<div class="cicon">' + icon + '</div><div class="clbl">' + (card.label || card.color || '').substring(0, 7) + '</div></div>';
   }).join('');
@@ -1990,7 +2051,7 @@ function buildMyHandHTML(pl) {
 function buildActionBtns(pl, ph) {
   const canDefPers = !pl.bombDefused && canDefuse(pl.hand, pl.bomb);
   const canDefSpec = G.specialBomb && !G.specialBomb.defused && canDefuse(pl.hand, G.specialBomb);
-  const canUse = G.selectedCards.length > 0 && G.actionsDone < G.maxActions;
+  const canUse = (G.selectedCards || []).length > 0 && G.actionsDone < G.maxActions;
   const canAct = G.actionsDone < G.maxActions;
   const canPass = !G.passCardDone && pl.hand.length > 0 && G.players.some(p => p.id !== MP.myId);
   if (ph === 'action') {
