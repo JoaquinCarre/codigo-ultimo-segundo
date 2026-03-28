@@ -501,23 +501,32 @@ function _baseSelectCard(idx){
   if(G.gameOver||aiThinking) return;
   // Fault round — MP: use MP.myId instead of find(isHuman)
   if(G.faultRound){
-    // faultOrder contains player INDICES — find my index and compare
-    let myIdx = MP && MP.myId
+    // faultOrder contains INTEGER INDICES into G.players
+    let myIdx = (typeof MP!=='undefined'&&MP.myId)
       ? G.players.findIndex(p=>p.id===MP.myId)
       : G.players.findIndex(p=>p.isHuman);
-    if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
+    // Only allow selection when it's this player's slot in the fault order
+    if(myIdx<0 || G.faultOrder[G.faultRoundIdx]!==myIdx) return;
     let p=G.players[myIdx];
     if(!p) return;
     let card=p.hand[idx];
     if(!card||card.type!=='cable') return;
-    if(G.faultSelected.length===0){G.faultSelected.push(idx);}
-    else{
-      let first=p.hand[G.faultSelected[0]];
-      if(!first||card.color!==first.color){log('Solo cartas del mismo color.','lw');render();return;}
-      let i=G.faultSelected.indexOf(idx);
-      if(i>=0) G.faultSelected.splice(i,1);
-      else if(G.faultSelected.length<G.faultPending) G.faultSelected.push(idx);
+    // Toggle selection — all must be same color
+    let faultSel=G.faultSelected||[];
+    if(faultSel.length===0){
+      faultSel=[idx];
+    } else {
+      let first=p.hand[faultSel[0]];
+      if(!first||card.color!==first.color){
+        // Different color — start fresh with this card
+        faultSel=[idx];
+      } else {
+        let pos=faultSel.indexOf(idx);
+        if(pos>=0) faultSel=faultSel.filter((_,i)=>i!==pos);  // deselect
+        else if(faultSel.length<3) faultSel=[...faultSel,idx]; // select (max 3)
+      }
     }
+    G.faultSelected=faultSel;
     render();return;
   }
   // Crisis — MP: use MP.myId instead of find(isHuman)
@@ -551,6 +560,7 @@ function selectAICard(idx){
 
 // ─── ACCIONES ────────────────────────────────────────────────────────────────
 function doDefusePersonal(){
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
   let p=cur();
   if(G.phase!=='action'||p.bombDefused||G.actionsDone>=G.maxActions) return;
   if(!canDefuse(p.hand,p.bomb)){log('Cables insuficientes.','lw');render();return;}
@@ -561,6 +571,7 @@ function doDefusePersonal(){
 }
 
 function doDefusePublic(idx){
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
   let p=cur(),b=G.publicBombs[idx];
   if(G.phase!=='action'||!b||b.defused||G.actionsDone>=G.maxActions) return;
   if(!canDefuse(p.hand,b)){log('Cables insuficientes.','lw');render();return;}
@@ -571,6 +582,7 @@ function doDefusePublic(idx){
 }
 
 function doDefuseSpecial(){
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
   let p=cur(),b=G.specialBomb;
   if(G.phase!=='action'||!b||b.defused||G.actionsDone>=G.maxActions) return;
   if(!canDefuse(p.hand,b)){log('Cables insuficientes para la Especial.','lw');render();return;}
@@ -581,6 +593,7 @@ function doDefuseSpecial(){
 }
 
 function doUseEffect(){
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
   if(G.phase!=='action'||G.actionsDone>=G.maxActions) return;
   let p=cur();
   if(G.selectedCards.length===0){log('Seleccioná una carta.','lw');render();return;}
@@ -662,11 +675,15 @@ function announceColors(){
   }
 }
 
-function doSkipToDraw(){G.selectedCards=[];G.phase='draw';render();}
+function doSkipToDraw(){
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
+  G.selectedCards=[];G.phase='draw';render();
+}
 
 // ─── ROBO ────────────────────────────────────────────────────────────────────
 function doDrawCard(){
   if(G.phase!=='draw') return;
+  if(typeof MP!=='undefined'&&!mpIsMyTurn()) return;
   if(G.gameDeck.length===0){endGame('lose','SISTEMA COLAPSADO','El mazo se agotó.');return;}
   let card=G.gameDeck.shift(),p=cur();
   log(`${p.name} roba: ${card.label||card.color}`,'le');
@@ -775,9 +792,11 @@ function startFaultRound(fault,drawerIdx,fromEffect){
   }
 
   log('⚡ FALLA — el equipo debe aportar 3 cables del mismo color.','lw');
-  log(`Orden: ${G.faultOrder.map(i=>G.players[i].name).join(' → ')}. El primero elige el color.`,'lw');
+  log(`Orden: ${G.faultOrder.map(i=>G.players[i].name).join(' → ')}. El primero aporta al menos 1.`,'lw');
 
-  G.faultConsult=true;  // always show consult panel; in MP all players are human
+  // Show consult panel for the drawer (faultRoundIdx=0)
+  G.faultConsult=true;
+  G.faultSelected=[];
   render();
 }
 
@@ -801,48 +820,53 @@ function doFaultAsk(color){
 function doFaultSkipConsult(){G.faultConsult=false;G.faultConsultDone=false;G.faultConsultColor=null;G.faultConsultReplies=[];render();}
 
 function doFaultContrib(){
-  let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
-  if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
-  if(myIdx<0||G.faultOrder[G.faultRoundIdx]!==myIdx) return;
-  G.faultConsult=false;G.faultConsultDone=false;
+  let myIdx=(typeof MP!=='undefined'&&MP.myId)?G.players.findIndex(p=>p.id===MP.myId):G.players.findIndex(p=>p.isHuman);
+  if(myIdx<0||G.faultOrder[G.faultRoundIdx]!==myIdx){log('No es tu turno en la falla.','lw');render();return;}
   let p=G.players[myIdx];
-  if(!p) return;
-  let sel=G.faultSelected.map(i=>p.hand[i]).filter(Boolean);
-  if(sel.length>0&&!sel.every(c=>c.color===sel[0].color)){log('Mismo color.','lw');render();return;}
-  // Drawer must contribute at least 1 if first
-  if(G.faultRoundIdx===0&&sel.length===0){log('El primero debe aportar al menos 1 carta.','lw');render();return;}
-  let idxs=[...G.faultSelected].sort((a,b)=>b-a);
+  if(!p){log('Error: jugador no encontrado.','lb');return;}
+  let faultSel=G.faultSelected||[];
+  let sel=faultSel.map(i=>p.hand[i]).filter(Boolean);
+  // Validate: all same color
+  if(sel.length>0&&!sel.every(c=>c.color===sel[0].color)){log('Deben ser del mismo color.','lw');render();return;}
+  // Drawer (faultRoundIdx=0) must contribute at least 1
+  if(G.faultRoundIdx===0&&sel.length===0){log('Debés aportar al menos 1 carta.','lw');render();return;}
+  // Remove selected cards from hand (sort descending to not mess up indices)
+  let idxs=[...faultSel].sort((a,b)=>b-a);
   for(let i of idxs) G.discard.push(p.hand.splice(i,1)[0]);
   G.faultContrib.push({playerIdx:myIdx,count:sel.length});
   G.faultPending-=sel.length;
   G.faultSelected=[];
+  G.faultConsult=false;G.faultConsultDone=false;
   log(`${p.name} aporta ${sel.length} cable(s) — faltan ${G.faultPending}.`,'lo');
   advanceFaultRound();
 }
 
 function doFaultPass(){
-  let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
-  if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
+  let myIdx=(typeof MP!=='undefined'&&MP.myId)?G.players.findIndex(p=>p.id===MP.myId):G.players.findIndex(p=>p.isHuman);
   if(myIdx<0||G.faultOrder[G.faultRoundIdx]!==myIdx) return;
-  // Drawer cannot pass (must contribute ≥1)
-  if(G.faultRoundIdx===0){log('El primero debe aportar al menos 1 carta. Si no tenés, pasa a Cortocircuito.','lw');render();return;}
+  if(G.faultRoundIdx===0){log('El primero no puede pasar — debés aportar al menos 1 carta.','lw');render();return;}
   G.faultConsult=false;G.faultConsultDone=false;
   G.faultContrib.push({playerIdx:myIdx,count:0});
   G.faultSelected=[];
-  log(`${G.players[myIdx].name} pasa (0).`,'le');
+  log(`${G.players[myIdx].name} pasa (0 cartas).`,'le');
   advanceFaultRound();
 }
 
 function advanceFaultRound(){
-  if(G.faultPending<=0){log('¡FALLA NEUTRALIZADA!','lo');endFaultRound(true,G.faultOrder[0]);return;}
+  if(G.faultPending<=0){
+    log('⚡ ¡FALLA NEUTRALIZADA! El equipo la superó.','lo');
+    endFaultRound(true,G.faultOrder[0]);return;
+  }
   G.faultRoundIdx++;
   if(G.faultRoundIdx>=G.faultOrder.length){
-    log(`Falla no resuelta — solo ${3-G.faultPending}/3 cables. −4 segundos.`,'lb');
+    log(`⚡ Falla no resuelta — ${3-G.faultPending}/3 cables. −4 segundos.`,'lb');
     endFaultRound(false,G.faultOrder[0]);return;
   }
+  // Reset selection for the next player
+  G.faultSelected=[];
   let next=G.players[G.faultOrder[G.faultRoundIdx]];
+  log(`Turno de ${next?next.name:'?'} en la falla.`,'lw');
   render();
-  // In MP: all players are human, nothing auto — render pushes via _afterAction in MP override
   if(next&&!next.isHuman) setTimeout(()=>faultAIContrib(),600);
 }
 
@@ -900,20 +924,15 @@ function faultAIContrib(){
 
 function endFaultRound(success,drawerIdx){
   if(!success){tickTime(4);if(G.gameOver)return;}
-  let drawerIsAI=!G.players[drawerIdx].isHuman;
-  let drawerAgent=G.players[drawerIdx];
   let fromEffect=G.faultFromEffect||false;
+  // Clear all fault state
   G.faultMode=null;G.faultRound=false;G.faultOrder=[];G.faultRoundIdx=0;
   G.faultContrib=[];G.faultSelected=[];G.faultPending=0;
   G.faultConsult=false;G.faultConsultColor=null;G.faultConsultReplies=[];G.faultConsultDone=false;
-
-  if(fromEffect){
-    G.phase='action';
-    render();
-  } else {
-    G.phase='hint';
-    render();
-  }
+  // fromEffect=true means fault came from Green card during action phase → resume actions
+  // fromEffect=false means fault came from the draw → go to hint phase
+  G.phase = fromEffect ? 'action' : 'hint';
+  render();
 }
 
 // ─── CRISIS ──────────────────────────────────────────────────────────────────
@@ -928,7 +947,8 @@ function startCrisis(bomb,stealerIdx){
 
 function doCrisisAttempt(){
   if(!G.crisisMode)return;
-  // crisisStealer is now a player ID string
+  // Only the stealer player can attempt
+  if(typeof MP!=='undefined'&&MP.myId&&G.crisisStealer!==MP.myId) return;
   let stealer=G.players.find(p=>p.id===G.crisisStealer)||G.players[G.crisisStealer];
   if(!stealer)return;
   let other=G.players.find(p=>p.id!==stealer.id);
@@ -975,6 +995,7 @@ function doCrisisAttempt(){
 }
 
 function doCrisisAdopt(){
+  if(typeof MP!=='undefined'&&MP.myId&&G.crisisStealer!==MP.myId) return;
   let bomb=G.crisisBomb;
   bomb.defused=false;
   if(bomb.type==='special'){if(!G.specialBomb)G.specialBomb=bomb;}
@@ -2199,9 +2220,17 @@ function buildSpecialBanners(isMyTurn, myPl) {
           (!isDrawer ? '<button class="btn" onclick="doFaultPass()">Pasar sin aportar</button>' : '') +
           '</div>';
       }
+    } else if (!MP.isSpectator) {
+      // I'm a player waiting for my slot
+      const myFaultSlotIdx = G.faultOrder.indexOf(myIdx);
+      const waitMsg = myFaultSlotIdx > (G.faultRoundIdx||0)
+        ? ' — te toca aportar en ' + (myFaultSlotIdx-(G.faultRoundIdx||0)) + ' turno(s)'
+        : '';
+      cH = '<div style="font-size:10px;color:var(--txd)">' +
+        (actPl ? '⏳ ' + actPl.name + ' está eligiendo sus cartas' + waitMsg : 'Esperando...') +
+        '</div>';
     } else {
-      cH = '<span style="font-size:10px;color:var(--txd)">' +
-        (actPl ? actPl.name + ' está decidiendo...' : 'Esperando...') + '</span>';
+      cH = '<span style="font-size:10px;color:var(--txd)">Observando la ronda de falla...</span>';
     }
 
     out += '<div class="fault-box">' +
@@ -2271,6 +2300,7 @@ function selectCard(idx) {
 
 // ─── HINT → AUTO-ADVANCE ─────────────────────────────────────────────────
 function doSubmitHint() {
+  if (!mpIsMyTurn()) { log('No es tu turno de dar pista.', 'lw'); return; }
   const input = document.getElementById('hint-in');
   const txt = (input?.value || G.hintText || '').trim();
   if (!txt) { log('Ingresá una palabra.', 'lw'); renderAll(); return; }

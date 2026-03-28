@@ -85,6 +85,8 @@ app.post('/api/rooms/:code/join', (req, res) => {
   const isSpectator = active.length >= 6 || !!room.gameState;
   const playerId = uuid();
   room.players.push({ id: playerId, name, ws: null, connected: false, isSpectator, isBot: false });
+  // Notify existing connected players immediately (they don't refresh)
+  sendAll(room, { type: 'room_update', data: { room: roomInfo(room) } });
   res.json({ roomId: room.id, playerId, code: room.code,
     isHost: false, isSpectator,
     room: roomInfo(room) });
@@ -194,7 +196,9 @@ wss.on('connection', (ws) => {
     }
     if (type === 'game_action') {
       room.gameState = data.gameState;
-      sendAll(room, { type: 'game_state', data: { gameState: room.gameState, actionBy: playerId, action: data.action } });
+      // Exclude sender — they already have the state locally, no need to receive it back
+      // (receiving own push back can corrupt local in-progress selections like fault cards)
+      sendAll(room, { type: 'game_state', data: { gameState: room.gameState, actionBy: playerId, action: data.action } }, playerId);
       return;
     }
     if (type === 'start_game') {
