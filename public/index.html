@@ -815,9 +815,13 @@ function doFaultAsk(color){
     log(`[${pl.name}] ${yes?'✓ SÍ':'✗ NO'}`,  'li');
   }
   G.faultConsultDone=true;render();
+  if(typeof _afterAction==='function') _afterAction('Consulta de color en falla.');
 }
 
-function doFaultSkipConsult(){G.faultConsult=false;G.faultConsultDone=false;G.faultConsultColor=null;G.faultConsultReplies=[];render();}
+function doFaultSkipConsult(){
+  G.faultConsult=false;G.faultConsultDone=false;G.faultConsultColor=null;G.faultConsultReplies=[];
+  render();
+}
 
 function doFaultContrib(){
   let myIdx=(typeof MP!=='undefined'&&MP.myId)?G.players.findIndex(p=>p.id===MP.myId):G.players.findIndex(p=>p.isHuman);
@@ -839,6 +843,8 @@ function doFaultContrib(){
   G.faultConsult=false;G.faultConsultDone=false;
   log(`${p.name} aporta ${sel.length} cable(s) — faltan ${G.faultPending}.`,'lo');
   advanceFaultRound();
+  // Explicit push so next player receives updated faultRoundIdx immediately
+  if(typeof _afterAction==='function') _afterAction(`${p.name} aportó ${sel.length} cable(s) a la falla.`);
 }
 
 function doFaultPass(){
@@ -850,6 +856,7 @@ function doFaultPass(){
   G.faultSelected=[];
   log(`${G.players[myIdx].name} pasa (0 cartas).`,'le');
   advanceFaultRound();
+  if(typeof _afterAction==='function') _afterAction(`${G.players[myIdx]?G.players[myIdx].name:'?'} pasó en la falla.`);
 }
 
 function advanceFaultRound(){
@@ -866,8 +873,10 @@ function advanceFaultRound(){
   G.faultSelected=[];
   let next=G.players[G.faultOrder[G.faultRoundIdx]];
   log(`Turno de ${next?next.name:'?'} en la falla.`,'lw');
-  render();
-  if(next&&!next.isHuman) setTimeout(()=>faultAIContrib(),600);
+  // Don't call render() here — doFaultContrib/doFaultPass will call _afterAction which pushes+renders
+  // For AI players (single-player mode), use render() + AI timeout
+  if(next&&!next.isHuman){render();setTimeout(()=>faultAIContrib(),600);}
+  else render();  // render for local display; _afterAction push comes from caller
 }
 
 function faultAIContrib(){
@@ -1601,6 +1610,10 @@ function handleWS(msg) {
     G.faultOrder = G.faultOrder || [];
     G.faultContrib = G.faultContrib || [];
     G.faultConsultReplies = G.faultConsultReplies || [];
+    G.crisisMode = G.crisisMode || false;
+    G.faultRound = G.faultRound || false;
+    G.discardMode = G.discardMode || false;
+    G.passCardMode = G.passCardMode || false;
     if (data.action) log(data.action, 'lp');
     renderAll(); return;
   }
@@ -2186,40 +2199,40 @@ function buildSpecialBanners(isMyTurn, myPl) {
       const fSel = (G.faultSelected || []).map(i => myPl ? myPl.hand[i] : null).filter(Boolean);
       const selColor = fSel.length > 0 ? fSel[0].color : null;
 
-      if (G.faultConsult && !G.faultConsultDone) {
-        // Phase A: drawer asks team about a color
+      // UNIFIED UI: show consult AND card selection at the same time
+      // Consult section (only if not done yet)
+      let consultSection = '';
+      if (!G.faultConsultDone) {
         const askBtns = ['red', 'green', 'blue'].map(c =>
-          `<button class="btn" style="border-color:var(--${c});color:var(--${c});font-size:10px;padding:5px 10px" onclick="doFaultAsk('${c}')">${CN[c]}</button>`
+          `<button class="btn" style="border-color:var(--${c});color:var(--${c});font-size:10px;padding:4px 8px" onclick="doFaultAsk('${c}')">${CN[c]}</button>`
         ).join('');
-        cH = '<div style="font-size:10px;color:var(--orange);margin-bottom:6px">Podés consultar al equipo antes de elegir:</div>' +
-          '<div class="brow" style="margin-bottom:8px">' + askBtns + '</div>' +
-          '<button class="btn" style="font-size:10px;border-color:var(--txd);color:var(--txd)" onclick="doFaultSkipConsult()">Jugar sin preguntar →</button>';
-      } else {
-        // Phase B: select cards and confirm
-        // Show consult result if any
-        let consultResult = '';
-        if (G.faultConsultColor && (G.faultConsultReplies || []).length > 0) {
-          consultResult = '<div style="margin:4px 0 6px;padding:4px 8px;background:rgba(0,0,0,.25);border-radius:2px;font-size:10px">' +
-            'Preguntaste ' + CN[G.faultConsultColor] + ': ' +
-            (G.faultConsultReplies || []).map(r =>
-              '<span style="color:' + (r.yes ? 'var(--g)' : 'var(--txd)') + '"> ' + r.name + ': ' + (r.yes ? '✓ SÍ' : '✗ NO') + '</span>'
-            ).join('') + '</div>';
-        }
-        const cardColor = G.faultConsultColor || (selColor || null);
-        const colorTip = cardColor ? ' del mismo color (<span style="color:var(--' + cardColor + ')">' + CN[cardColor] + '</span>)' : ' del mismo color';
-        cH = consultResult +
-          '<div style="font-size:10px;color:var(--orange);margin-bottom:4px">' +
-          (isDrawer ? '⚠ Debés aportar al menos 1 cable' + colorTip + '.' : 'Podés aportar cables' + colorTip + ' o pasar.') +
-          '</div>' +
-          (fSel.length > 0 ?
-            '<div style="font-size:10px;margin-bottom:6px">Seleccionadas: ' + fSel.map(c => '<span style="color:var(--' + (c.color==='white'?'w':c.color) + ')">' + c.label + '</span>').join(', ') + '</div>' : '') +
-          '<div class="brow">' +
-          '<button class="btn warn" onclick="doFaultContrib()" ' + (isDrawer && fSel.length === 0 ? 'disabled' : '') + '>' +
-            (fSel.length > 0 ? '✓ Aportar ' + fSel.length + ' carta(s)' : isDrawer ? 'Seleccioná al menos 1' : 'Aportar 0') +
-          '</button>' +
-          (!isDrawer ? '<button class="btn" onclick="doFaultPass()">Pasar sin aportar</button>' : '') +
-          '</div>';
+        consultSection = '<div style="font-size:10px;color:var(--txd);margin-bottom:4px">Opcional — preguntar al equipo:</div>' +
+          '<div class="brow" style="margin-bottom:8px">' + askBtns + '</div>';
+      } else if (G.faultConsultColor && (G.faultConsultReplies || []).length > 0) {
+        // Show consult results
+        consultSection = '<div style="margin:0 0 6px;padding:4px 8px;background:rgba(0,0,0,.25);border-radius:2px;font-size:10px">' +
+          'Equipo sobre ' + (CN[G.faultConsultColor]||G.faultConsultColor) + ': ' +
+          (G.faultConsultReplies || []).map(r =>
+            '<span style="color:' + (r.yes ? 'var(--g)' : 'var(--txd)') + '"> ' + r.name + ': ' + (r.yes ? '✓ SÍ' : '✗ NO') + '</span>'
+          ).join('') + '</div>';
       }
+      // Card selection section — always visible when it's my slot
+      const selColor2 = fSel.length > 0 ? fSel[0].color : (G.faultConsultColor || null);
+      const colorHint = selColor2 ? ' (<span style="color:var(--' + selColor2 + ')">' + (CN[selColor2]||selColor2) + '</span>)' : '';
+      const instrText = isDrawer
+        ? '⚠ Seleccioná al menos 1 cable' + colorHint + ' de tu mano y confirmá.'
+        : 'Seleccioná cables' + colorHint + ' para aportar, o pasá sin aportar.';
+      cH = consultSection +
+        '<div style="font-size:10px;color:var(--orange);margin-bottom:6px">' + instrText + '</div>' +
+        (fSel.length > 0 ?
+          '<div style="font-size:10px;margin-bottom:6px">→ Seleccionadas: ' +
+          fSel.map(c => '<span style="color:var(--' + (c.color==='white'?'w':c.color) + ')">' + c.label + '</span>').join(', ') + '</div>' : '') +
+        '<div class="brow">' +
+        '<button class="btn warn" onclick="doFaultContrib()" ' + (isDrawer && fSel.length === 0 ? 'disabled title="Seleccioná al menos 1 carta"' : '') + '>' +
+          (fSel.length > 0 ? '✓ Aportar ' + fSel.length + ' carta(s)' : isDrawer ? 'Seleccioná al menos 1' : 'Aportar 0') +
+        '</button>' +
+        (!isDrawer ? '<button class="btn" onclick="doFaultPass()">Pasar (0)</button>' : '') +
+        '</div>';
     } else if (!MP.isSpectator) {
       // I'm a player waiting for my slot
       const myFaultSlotIdx = G.faultOrder.indexOf(myIdx);
