@@ -501,16 +501,19 @@ function _baseSelectCard(idx){
   if(G.gameOver||aiThinking) return;
   // Fault round — MP: use MP.myId instead of find(isHuman)
   if(G.faultRound){
-    let hId = MP && MP.myId ? MP.myId : (G.players.find(p=>p.isHuman)||G.players[0]).id;
-    if(G.faultOrder[G.faultRoundIdx]!==hId) return;
-    let p=G.players.find(pl=>pl.id===hId);
+    // faultOrder contains player INDICES — find my index and compare
+    let myIdx = MP && MP.myId
+      ? G.players.findIndex(p=>p.id===MP.myId)
+      : G.players.findIndex(p=>p.isHuman);
+    if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
+    let p=G.players[myIdx];
     if(!p) return;
     let card=p.hand[idx];
     if(!card||card.type!=='cable') return;
     if(G.faultSelected.length===0){G.faultSelected.push(idx);}
     else{
       let first=p.hand[G.faultSelected[0]];
-      if(!first||card.color!==first.color){log('Mismo color para la falla.','lw');render();return;}
+      if(!first||card.color!==first.color){log('Solo cartas del mismo color.','lw');render();return;}
       let i=G.faultSelected.indexOf(idx);
       if(i>=0) G.faultSelected.splice(i,1);
       else if(G.faultSelected.length<G.faultPending) G.faultSelected.push(idx);
@@ -798,10 +801,9 @@ function doFaultAsk(color){
 function doFaultSkipConsult(){G.faultConsult=false;G.faultConsultDone=false;G.faultConsultColor=null;G.faultConsultReplies=[];render();}
 
 function doFaultContrib(){
-  // faultOrder contains player INDICES; find my index
   let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
   if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
-  if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
+  if(myIdx<0||G.faultOrder[G.faultRoundIdx]!==myIdx) return;
   G.faultConsult=false;G.faultConsultDone=false;
   let p=G.players[myIdx];
   if(!p) return;
@@ -821,7 +823,7 @@ function doFaultContrib(){
 function doFaultPass(){
   let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
   if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
-  if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
+  if(myIdx<0||G.faultOrder[G.faultRoundIdx]!==myIdx) return;
   // Drawer cannot pass (must contribute ≥1)
   if(G.faultRoundIdx===0){log('El primero debe aportar al menos 1 carta. Si no tenés, pasa a Cortocircuito.','lw');render();return;}
   G.faultConsult=false;G.faultConsultDone=false;
@@ -2143,30 +2145,69 @@ function buildSpecialBanners(isMyTurn, myPl) {
   }
   // Fault
   if (G.faultRound && G.faultMode) {
-    const actIdx = G.faultOrder ? G.faultOrder[G.faultRoundIdx || 0] : 0;
+    const actIdx = (G.faultOrder && G.faultOrder.length > 0) ? G.faultOrder[G.faultRoundIdx || 0] : 0;
     const actPl = G.players[actIdx];
     const myIdx = G.players.findIndex(p => p.id === MP.myId);
     const isMySlot = actIdx === myIdx && !MP.isSpectator;
+    const isDrawer = (G.faultRoundIdx || 0) === 0;
+
+    // Progress bar
     const cBar = (G.faultOrder || []).map((pidIdx, i) => {
       const pl = G.players[pidIdx];
-      const contrib = (G.faultContrib || []).find(c => c.playerIdx === pidIdx || c.playerId === (pl&&pl.id));
-      const status = contrib ? '✓ ' + contrib.count + 'c' : i === (G.faultRoundIdx || 0) ? '⬅ AHORA' : '...';
-      const col = contrib ? 'var(--gd)' : i === (G.faultRoundIdx || 0) ? 'var(--orange)' : 'var(--txd)';
-      return '<span style="color:' + col + ';font-size:10px">' + (pl?.name || '?') + ': ' + status + '</span>';
+      const contrib = (G.faultContrib || []).find(c => c.playerIdx === pidIdx);
+      const status = contrib !== undefined ? '✓ ' + contrib.count + 'c' : i === (G.faultRoundIdx || 0) ? '⬅ AHORA' : '...';
+      const col = contrib !== undefined ? 'var(--gd)' : i === (G.faultRoundIdx || 0) ? 'var(--orange)' : 'var(--txd)';
+      return '<span style="color:' + col + ';font-size:10px">' + (pl ? pl.name : '?') + ': ' + status + '</span>';
     }).join(' &nbsp;|&nbsp; ');
+
     let cH = '';
     if (isMySlot) {
-      const isDrawer = (G.faultRoundIdx || 0) === 0;
-      const fSel = (G.faultSelected || []).map(i => myPl?.hand[i]).filter(Boolean);
-      cH = '<span style="font-size:10px;color:var(--orange)">Tu turno — seleccioná' + (isDrawer ? ' al menos 1' : '') + ' cable(s) del mismo color.</span>' +
-        (fSel.length > 0 ? '<div style="font-size:10px;margin-top:5px">→ ' + fSel.map(c => '<span style="color:var(--' + c.color + ')">' + c.label + '</span>').join(', ') + '</div>' : '') +
-        '<div class="brow"><button class="btn warn" onclick="doFaultContrib()">' + (G.faultSelected?.length > 0 ? 'Aportar ' + G.faultSelected.length : 'Aportar 0') + '</button>' +
-        (!isDrawer ? '<button class="btn" onclick="doFaultPass()">Pasar (0)</button>' : '') + '</div>';
+      const fSel = (G.faultSelected || []).map(i => myPl ? myPl.hand[i] : null).filter(Boolean);
+      const selColor = fSel.length > 0 ? fSel[0].color : null;
+
+      if (G.faultConsult && !G.faultConsultDone) {
+        // Phase A: drawer asks team about a color
+        const askBtns = ['red', 'green', 'blue'].map(c =>
+          `<button class="btn" style="border-color:var(--${c});color:var(--${c});font-size:10px;padding:5px 10px" onclick="doFaultAsk('${c}')">${CN[c]}</button>`
+        ).join('');
+        cH = '<div style="font-size:10px;color:var(--orange);margin-bottom:6px">Podés consultar al equipo antes de elegir:</div>' +
+          '<div class="brow" style="margin-bottom:8px">' + askBtns + '</div>' +
+          '<button class="btn" style="font-size:10px;border-color:var(--txd);color:var(--txd)" onclick="doFaultSkipConsult()">Jugar sin preguntar →</button>';
+      } else {
+        // Phase B: select cards and confirm
+        // Show consult result if any
+        let consultResult = '';
+        if (G.faultConsultColor && (G.faultConsultReplies || []).length > 0) {
+          consultResult = '<div style="margin:4px 0 6px;padding:4px 8px;background:rgba(0,0,0,.25);border-radius:2px;font-size:10px">' +
+            'Preguntaste ' + CN[G.faultConsultColor] + ': ' +
+            (G.faultConsultReplies || []).map(r =>
+              '<span style="color:' + (r.yes ? 'var(--g)' : 'var(--txd)') + '"> ' + r.name + ': ' + (r.yes ? '✓ SÍ' : '✗ NO') + '</span>'
+            ).join('') + '</div>';
+        }
+        const cardColor = G.faultConsultColor || (selColor || null);
+        const colorTip = cardColor ? ' del mismo color (<span style="color:var(--' + cardColor + ')">' + CN[cardColor] + '</span>)' : ' del mismo color';
+        cH = consultResult +
+          '<div style="font-size:10px;color:var(--orange);margin-bottom:4px">' +
+          (isDrawer ? '⚠ Debés aportar al menos 1 cable' + colorTip + '.' : 'Podés aportar cables' + colorTip + ' o pasar.') +
+          '</div>' +
+          (fSel.length > 0 ?
+            '<div style="font-size:10px;margin-bottom:6px">Seleccionadas: ' + fSel.map(c => '<span style="color:var(--' + (c.color==='white'?'w':c.color) + ')">' + c.label + '</span>').join(', ') + '</div>' : '') +
+          '<div class="brow">' +
+          '<button class="btn warn" onclick="doFaultContrib()" ' + (isDrawer && fSel.length === 0 ? 'disabled' : '') + '>' +
+            (fSel.length > 0 ? '✓ Aportar ' + fSel.length + ' carta(s)' : isDrawer ? 'Seleccioná al menos 1' : 'Aportar 0') +
+          '</button>' +
+          (!isDrawer ? '<button class="btn" onclick="doFaultPass()">Pasar sin aportar</button>' : '') +
+          '</div>';
+      }
     } else {
-      cH = '<span style="font-size:10px;color:var(--txd)">' + (actPl ? actPl.name + ' está decidiendo...' : 'Esperando...') + '</span>';
+      cH = '<span style="font-size:10px;color:var(--txd)">' +
+        (actPl ? actPl.name + ' está decidiendo...' : 'Esperando...') + '</span>';
     }
-    out += '<div class="fault-box">⚡ FALLA — 3 cables del mismo color &nbsp;|&nbsp; Faltan: <strong>' + (G.faultPending || 0) + '</strong>/3' +
-      '<div style="margin:5px 0 4px;font-size:10px">' + cBar + '</div>' + cH + '</div>';
+
+    out += '<div class="fault-box">' +
+      '⚡ FALLA — aportar 3 cables del mismo color entre todos &nbsp;|&nbsp; Faltan: <strong>' + (G.faultPending || 0) + '</strong>/3' +
+      '<div style="margin:6px 0 4px;font-size:10px">' + cBar + '</div>' +
+      cH + '</div>';
   }
   return out;
 }
