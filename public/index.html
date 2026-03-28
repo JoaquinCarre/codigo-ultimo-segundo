@@ -497,13 +497,15 @@ function tickTime(n=1){
 }
 
 // ─── INPUT DEL JUGADOR ───────────────────────────────────────────────────────
-function selectCard(idx){
+function _baseSelectCard(idx){
   if(G.gameOver||aiThinking) return;
-  // Fault round
+  // Fault round — MP: use MP.myId instead of find(isHuman)
   if(G.faultRound){
-    let hId=G.players.find(p=>p.isHuman).id;
+    let hId = MP && MP.myId ? MP.myId : (G.players.find(p=>p.isHuman)||G.players[0]).id;
     if(G.faultOrder[G.faultRoundIdx]!==hId) return;
-    let p=G.players[hId],card=p.hand[idx];
+    let p=G.players.find(pl=>pl.id===hId);
+    if(!p) return;
+    let card=p.hand[idx];
     if(!card||card.type!=='cable') return;
     if(G.faultSelected.length===0){G.faultSelected.push(idx);}
     else{
@@ -515,9 +517,11 @@ function selectCard(idx){
     }
     render();return;
   }
-  // Crisis — selección propia
-  if(G.crisisMode&&G.crisisStealer===G.players.find(p=>p.isHuman)?.id){
-    let card=G.players.find(p=>p.isHuman).hand[idx];
+  // Crisis — MP: use MP.myId instead of find(isHuman)
+  if(G.crisisMode&&G.crisisStealer===(MP && MP.myId ? MP.myId : (G.players.find(p=>p.isHuman)||{}).id)){
+    let myPl=G.players.find(p=>p.id===(MP && MP.myId ? MP.myId : null));
+    if(!myPl) return;
+    let card=myPl.hand[idx];
     if(!card||card.type==='fault'||card.type==='bomb'||card.type==='special') return;
     let i=G.crisisOwnSelected.indexOf(idx);
     if(i>=0) G.crisisOwnSelected.splice(i,1);
@@ -528,7 +532,7 @@ function selectCard(idx){
   if(G.discardMode){discardSelectCard(idx);return;}
   if(G.greenMode){greenSelectCard(idx);return;}
   if(G.phase!=='action') return;
-  let i=G.selectedCards.indexOf(idx);
+  let i=(G.selectedCards||[]).indexOf(idx);
   if(i>=0) G.selectedCards.splice(i,1);
   else G.selectedCards.push(idx);
   render();
@@ -770,22 +774,17 @@ function startFaultRound(fault,drawerIdx,fromEffect){
   log('⚡ FALLA — el equipo debe aportar 3 cables del mismo color.','lw');
   log(`Orden: ${G.faultOrder.map(i=>G.players[i].name).join(' → ')}. El primero elige el color.`,'lw');
 
-  let first=G.players[G.faultOrder[0]];
-  if(first.isHuman){
-    G.faultConsult=true;
-    render();
-  } else {
-    render();
-    setTimeout(()=>faultAIContrib(),600);
-  }
+  G.faultConsult=true;  // always show consult panel; in MP all players are human
+  render();
 }
 
 function doFaultAsk(color){
   if(!G.faultConsult||G.faultConsultDone) return;
   G.faultConsultColor=color;G.faultConsultReplies=[];
   log(`JUGADOR pregunta: "¿Alguien tiene ${CN[color]||color}?"`,'lw');
+  let myId=typeof MP!=='undefined'&&MP.myId?MP.myId:null;
   for(let pl of G.players){
-    if(pl.isHuman)continue;
+    if(pl.id===myId)continue;  // skip self, ask everyone else
     let cnt=countCols(pl.hand);
     let have=cnt[color]||0;
     let maxHave=Math.max(0,...Object.entries(cnt).filter(([c])=>c!=='white').map(([,n])=>n));
@@ -799,17 +798,20 @@ function doFaultAsk(color){
 function doFaultSkipConsult(){G.faultConsult=false;G.faultConsultDone=false;G.faultConsultColor=null;G.faultConsultReplies=[];render();}
 
 function doFaultContrib(){
-  let hId=G.players.find(p=>p.isHuman).id;
-  if(G.faultOrder[G.faultRoundIdx]!==hId) return;
+  // faultOrder contains player INDICES; find my index
+  let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
+  if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
+  if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
   G.faultConsult=false;G.faultConsultDone=false;
-  let p=G.players[hId];
+  let p=G.players[myIdx];
+  if(!p) return;
   let sel=G.faultSelected.map(i=>p.hand[i]).filter(Boolean);
   if(sel.length>0&&!sel.every(c=>c.color===sel[0].color)){log('Mismo color.','lw');render();return;}
   // Drawer must contribute at least 1 if first
   if(G.faultRoundIdx===0&&sel.length===0){log('El primero debe aportar al menos 1 carta.','lw');render();return;}
   let idxs=[...G.faultSelected].sort((a,b)=>b-a);
   for(let i of idxs) G.discard.push(p.hand.splice(i,1)[0]);
-  G.faultContrib.push({playerId:hId,count:sel.length});
+  G.faultContrib.push({playerIdx:myIdx,count:sel.length});
   G.faultPending-=sel.length;
   G.faultSelected=[];
   log(`${p.name} aporta ${sel.length} cable(s) — faltan ${G.faultPending}.`,'lo');
@@ -817,14 +819,15 @@ function doFaultContrib(){
 }
 
 function doFaultPass(){
-  let hId=G.players.find(p=>p.isHuman).id;
-  if(G.faultOrder[G.faultRoundIdx]!==hId) return;
+  let myIdx=G.players.findIndex(p=>p.id===(typeof MP!=='undefined'&&MP.myId?MP.myId:null));
+  if(myIdx<0) myIdx=G.players.findIndex(p=>p.isHuman);
+  if(G.faultOrder[G.faultRoundIdx]!==myIdx) return;
   // Drawer cannot pass (must contribute ≥1)
   if(G.faultRoundIdx===0){log('El primero debe aportar al menos 1 carta. Si no tenés, pasa a Cortocircuito.','lw');render();return;}
   G.faultConsult=false;G.faultConsultDone=false;
-  G.faultContrib.push({playerId:hId,count:0});
+  G.faultContrib.push({playerIdx:myIdx,count:0});
   G.faultSelected=[];
-  log(`${G.players[hId].name} pasa (0).`,'le');
+  log(`${G.players[myIdx].name} pasa (0).`,'le');
   advanceFaultRound();
 }
 
@@ -837,7 +840,8 @@ function advanceFaultRound(){
   }
   let next=G.players[G.faultOrder[G.faultRoundIdx]];
   render();
-  if(!next.isHuman) setTimeout(()=>faultAIContrib(),600);
+  // In MP: all players are human, nothing auto — render pushes via _afterAction in MP override
+  if(next&&!next.isHuman) setTimeout(()=>faultAIContrib(),600);
 }
 
 function faultAIContrib(){
@@ -902,20 +906,19 @@ function endFaultRound(success,drawerIdx){
   G.faultConsult=false;G.faultConsultColor=null;G.faultConsultReplies=[];G.faultConsultDone=false;
 
   if(fromEffect){
-    // Fault from Green effect — no hint, continue actions
     G.phase='action';
     render();
-    if(drawerIsAI&&!drawerAgent.isHuman) setTimeout(()=>aiDrawPhase(drawerAgent),400);
   } else {
     G.phase='hint';
     render();
-    if(drawerIsAI&&!drawerAgent.isHuman) setTimeout(()=>aiHintPhase(drawerAgent),400);
   }
 }
 
 // ─── CRISIS ──────────────────────────────────────────────────────────────────
 function startCrisis(bomb,stealerIdx){
-  G.crisisMode=true;G.crisisBomb=bomb;G.crisisStealer=stealerIdx;
+  G.crisisMode=true;G.crisisBomb=bomb;
+  // Store player ID (not index) so MP layer can find by id
+  G.crisisStealer=typeof stealerIdx==='number' ? G.players[stealerIdx].id : stealerIdx;
   G.selectedCards=[];G.crisisOwnSelected=[];
   log(`💣 ¡CRISIS! ${bomb.label} — ${Object.entries(bomb.reqs).map(([c,n])=>`${n}×${CN[c]}`).join(' + ')}`,'lb');
   render();
@@ -923,9 +926,11 @@ function startCrisis(bomb,stealerIdx){
 
 function doCrisisAttempt(){
   if(!G.crisisMode)return;
-  let stealer=G.players[G.crisisStealer];
+  // crisisStealer is now a player ID string
+  let stealer=G.players.find(p=>p.id===G.crisisStealer)||G.players[G.crisisStealer];
+  if(!stealer)return;
   let other=G.players.find(p=>p.id!==stealer.id);
-  let ownCards=stealer.isHuman&&G.crisisOwnSelected.length>0
+  let ownCards=G.crisisOwnSelected.length>0
     ? G.crisisOwnSelected.map(i=>stealer.hand[i]).filter(Boolean)
     : [...stealer.hand];
   let stolen=other?G.selectedCards.map(i=>other.hand[i]).filter(Boolean):[];
@@ -936,7 +941,7 @@ function doCrisisAttempt(){
   if(canDefuse(combined,bomb)){
     let rem=neededCards(combined,bomb);
     for(let card of stolen){let col=card.color;if((rem[col]||0)>0){rem[col]--;let i=other.hand.indexOf(card);if(i>=0)other.hand.splice(i,1);}}
-    if(stealer.isHuman&&G.crisisOwnSelected.length>0){
+    if(G.crisisOwnSelected.length>0){
       let idxs=[...G.crisisOwnSelected].sort((a,b)=>b-a);
       for(let i of idxs) stealer.hand.splice(i,1);
     } else {
@@ -948,8 +953,7 @@ function doCrisisAttempt(){
     G.crisisMode=false;G.crisisBomb=null;G.selectedCards=[];G.crisisOwnSelected=[];
     if(checkWin())return;
     G.phase='hint';
-    if(cur().isHuman) render();
-    else {render();setTimeout(()=>aiHintPhase(cur()),500);}
+    render();
     return;
   }
 
@@ -965,8 +969,7 @@ function doCrisisAttempt(){
   tickTime(pen);if(G.gameOver)return;
   G.crisisMode=false;G.crisisBomb=null;G.selectedCards=[];G.crisisOwnSelected=[];
   G.phase='hint';
-  if(cur().isHuman) render();
-  else {render();setTimeout(()=>aiHintPhase(cur()),500);}
+  render();
 }
 
 function doCrisisAdopt(){
@@ -976,16 +979,18 @@ function doCrisisAdopt(){
   else {if(!G.publicBombs.includes(bomb))G.publicBombs.push(bomb);}
   log('Bomba adoptada. Reloj avanza normalmente.','lw');
   G.crisisMode=false;G.crisisBomb=null;G.selectedCards=[];G.crisisOwnSelected=[];
-  G.phase='hint';render();
+  G.phase='hint'; render();
 }
 
 // ─── AVANCE DE TURNO ─────────────────────────────────────────────────────────
 function advanceTurn(){
   G.currentTurn=(G.currentTurn+1)%G.numPlayers;
   G.phase='action';G.actionsDone=0;G.selectedCards=[];G.faultSelected=[];G.skipClock=false;
+  G.passCardDone=false;
   if(checkWin())return;
   render();
-  if(!cur().isHuman){aiThinking=true;render();setTimeout(doAITurn,600);}
+  // Only run AI in single-player mode (MP: all isHuman)
+  if(!cur().isHuman&&typeof MP==='undefined'){aiThinking=true;render();setTimeout(doAITurn,600);}
 }
 
 // ─── IA TURNO ────────────────────────────────────────────────────────────────
@@ -1493,7 +1498,8 @@ async function tryRestore() {
 // ─── WEBSOCKET ─────────────────────────────────────────────────────────────
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  MP.wsStatus = 'connecting'; renderAll();
+  MP.wsStatus = 'connecting';
+  // Don't call renderAll() here — screen is already set correctly by tryRestore
   if (MP.ws) { try { MP.ws.close(); } catch {} }
   MP.ws = new WebSocket(proto + '//' + location.host);
   MP.ws.onopen = () => {
@@ -1651,10 +1657,21 @@ function doStartGame() {
   wsSend('start_game', { gameState: G });
   renderAll();
 }
+function resetLocalState() {
+  // Clear all transient UI/game state — called when going back to lobby
+  if (G) {
+    G.selectedCards = []; G.crisisOwnSelected = []; G.faultSelected = [];
+    G.discardSelected = []; G.discardMode = false; G.discardCount = 0;
+    G.crisisMode = false; G.crisisBomb = null; G.crisisStealer = null;
+    G.faultRound = false; G.faultOrder = []; G.faultRoundIdx = 0;
+    G.faultContrib = []; G.faultPending = 0; G.faultMode = null;
+    G.passCardMode = false; G.passCardIdx = null; G.passCardTarget = null;
+  }
+}
+
 function goLobby() {
   document.getElementById('modal-ov').style.display = 'none';
   G = null; MP.screen = 'lobby'; appLog = []; MP.hints = [];
-  resetLocalState();
   renderAll();
 }
 
@@ -2128,10 +2145,11 @@ function buildSpecialBanners(isMyTurn, myPl) {
   if (G.faultRound && G.faultMode) {
     const actIdx = G.faultOrder ? G.faultOrder[G.faultRoundIdx || 0] : 0;
     const actPl = G.players[actIdx];
-    const isMySlot = actPl?.id === MP.myId && !MP.isSpectator;
+    const myIdx = G.players.findIndex(p => p.id === MP.myId);
+    const isMySlot = actIdx === myIdx && !MP.isSpectator;
     const cBar = (G.faultOrder || []).map((pidIdx, i) => {
       const pl = G.players[pidIdx];
-      const contrib = (G.faultContrib || []).find(c => c.playerIdx === pidIdx);
+      const contrib = (G.faultContrib || []).find(c => c.playerIdx === pidIdx || c.playerId === (pl&&pl.id));
       const status = contrib ? '✓ ' + contrib.count + 'c' : i === (G.faultRoundIdx || 0) ? '⬅ AHORA' : '...';
       const col = contrib ? 'var(--gd)' : i === (G.faultRoundIdx || 0) ? 'var(--orange)' : 'var(--txd)';
       return '<span style="color:' + col + ';font-size:10px">' + (pl?.name || '?') + ': ' + status + '</span>';
@@ -2204,8 +2222,7 @@ function doConfirmPassCard() {
   _afterAction(p.name + ' pasó una carta a ' + target.name + '.');
 }
 
-// Override selectCard to handle passCardIdx
-const _baseSelectCard = selectCard;
+// MP-aware selectCard — calls renamed _baseSelectCard (no hoisting conflict)
 function selectCard(idx) {
   if (G.passCardMode) { G.passCardIdx = idx; renderAll(); return; }
   _baseSelectCard(idx);
@@ -2235,12 +2252,34 @@ function doSubmitHint() {
 }
 
 // Expose render for base game compatibility
-function render() { renderAll(); }
+// Also auto-pushes game state to server whenever base game functions call render()
+let _renderPushPending = false;
+function render() {
+  renderAll();
+  // Push state to server after any base-game action (debounced to avoid spam)
+  if (typeof MP !== 'undefined' && MP.screen === 'game' && G && !_renderPushPending) {
+    _renderPushPending = true;
+    Promise.resolve().then(() => {
+      _renderPushPending = false;
+      if (G) {
+        G.log = appLog.slice(0, 50);
+        wsSend('game_action', { gameState: G, action: '' });
+      }
+    });
+  }
+}
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 (async () => {
   const restored = await tryRestore();
-  if (!restored) { MP.screen = 'landing'; renderAll(); }
+  if (!restored) {
+    MP.screen = 'landing';
+    renderAll();
+  } else {
+    // Render immediately with restored state (game or lobby)
+    // WS will update room/game state once connected
+    renderAll();
+  }
 })();
 
 </script>
