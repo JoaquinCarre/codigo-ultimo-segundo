@@ -774,6 +774,11 @@ function doAdvanceClock(){
 
 // ─── FALLA ───────────────────────────────────────────────────────────────────
 function startFaultRound(fault,drawerIdx,fromEffect){
+  // Normalize drawerIdx: accept either an integer index OR a player ID string
+  if(typeof drawerIdx==='string'){
+    drawerIdx=G.players.findIndex(p=>p.id===drawerIdx);
+    if(drawerIdx<0) drawerIdx=G.currentTurn;
+  }
   G.faultMode=fault;G.faultRound=true;G.faultPending=3;
   G.faultContrib=[];G.faultSelected=[];G.faultFromEffect=fromEffect||false;
   G.faultConsult=false;G.faultConsultColor=null;G.faultConsultReplies=[];G.faultConsultDone=false;
@@ -2179,22 +2184,30 @@ function buildSpecialBanners(isMyTurn, myPl) {
   }
   // Fault
   if (G.faultRound && G.faultMode) {
-    const actIdx = (G.faultOrder && G.faultOrder.length > 0) ? G.faultOrder[G.faultRoundIdx || 0] : 0;
-    const actPl = G.players[actIdx];
+    const faultOrder = G.faultOrder || [];
+    const faultRoundIdx = G.faultRoundIdx || 0;
+    const actIdx = faultOrder.length > 0 ? faultOrder[faultRoundIdx] : -1;
+    const actPl = actIdx >= 0 ? G.players[actIdx] : null;
+    // Find my index robustly — both by ID and by position
     const myIdx = G.players.findIndex(p => p.id === MP.myId);
-    const isMySlot = actIdx === myIdx && !MP.isSpectator;
-    const isDrawer = (G.faultRoundIdx || 0) === 0;
+    // isMySlot: my integer index matches the current actor's integer index
+    const isMySlot = myIdx >= 0 && actIdx === myIdx && !MP.isSpectator;
+    const isDrawer = faultRoundIdx === 0;
 
     // Progress bar
-    const cBar = (G.faultOrder || []).map((pidIdx, i) => {
+    const cBar = faultOrder.map((pidIdx, i) => {
       const pl = G.players[pidIdx];
       const contrib = (G.faultContrib || []).find(c => c.playerIdx === pidIdx);
-      const status = contrib !== undefined ? '✓ ' + contrib.count + 'c' : i === (G.faultRoundIdx || 0) ? '⬅ AHORA' : '...';
-      const col = contrib !== undefined ? 'var(--gd)' : i === (G.faultRoundIdx || 0) ? 'var(--orange)' : 'var(--txd)';
+      const status = contrib !== undefined ? '✓ ' + contrib.count + 'c' : i === faultRoundIdx ? '⬅ AHORA' : '...';
+      const col = contrib !== undefined ? 'var(--gd)' : i === faultRoundIdx ? 'var(--orange)' : 'var(--txd)';
       return '<span style="color:' + col + ';font-size:10px">' + (pl ? pl.name : '?') + ': ' + status + '</span>';
     }).join(' &nbsp;|&nbsp; ');
 
     let cH = '';
+    // Fault debug info (always visible to help diagnose)
+    const faultDebug = '<div style="font-size:9px;color:var(--txd);margin-bottom:4px;font-family:monospace">' +
+      'faultRoundIdx:' + faultRoundIdx + ' actIdx:' + actIdx + ' myIdx:' + myIdx + ' isMySlot:' + isMySlot +
+      ' order:[' + faultOrder.join(',') + ']</div>';
     if (isMySlot) {
       const fSel = (G.faultSelected || []).map(i => myPl ? myPl.hand[i] : null).filter(Boolean);
       const selColor = fSel.length > 0 ? fSel[0].color : null;
@@ -2235,9 +2248,9 @@ function buildSpecialBanners(isMyTurn, myPl) {
         '</div>';
     } else if (!MP.isSpectator) {
       // I'm a player waiting for my slot
-      const myFaultSlotIdx = G.faultOrder.indexOf(myIdx);
-      const waitMsg = myFaultSlotIdx > (G.faultRoundIdx||0)
-        ? ' — te toca aportar en ' + (myFaultSlotIdx-(G.faultRoundIdx||0)) + ' turno(s)'
+      const myFaultSlotIdx = faultOrder.indexOf(myIdx);
+      const waitMsg = myFaultSlotIdx > faultRoundIdx
+        ? ' — te toca en ' + (myFaultSlotIdx - faultRoundIdx) + ' turno(s)'
         : '';
       cH = '<div style="font-size:10px;color:var(--txd)">' +
         (actPl ? '⏳ ' + actPl.name + ' está eligiendo sus cartas' + waitMsg : 'Esperando...') +
@@ -2249,6 +2262,7 @@ function buildSpecialBanners(isMyTurn, myPl) {
     out += '<div class="fault-box">' +
       '⚡ FALLA — aportar 3 cables del mismo color entre todos &nbsp;|&nbsp; Faltan: <strong>' + (G.faultPending || 0) + '</strong>/3' +
       '<div style="margin:6px 0 4px;font-size:10px">' + cBar + '</div>' +
+      faultDebug +
       cH + '</div>';
   }
   return out;
