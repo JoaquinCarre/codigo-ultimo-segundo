@@ -54,6 +54,8 @@ function roomInfo(room) {
       isBot: !!p.isBot,
     })),
     hasGame: !!room.gameState,
+    isPublic: !!room.isPublic,
+    playerCount: room.players.filter(p => !p.isSpectator).length,
   };
 }
 function activePlayers(room) { return room.players.filter(p => !p.isSpectator); }
@@ -66,10 +68,11 @@ app.post('/api/rooms', (req, res) => {
   if (!name) return res.status(400).json({ error: 'Nombre requerido.' });
   const roomId = uuid(), playerId = uuid();
   let code; do { code = genCode(); } while (byCode(code));
+  const isPublic = req.body.isPublic !== false; // default public
   const room = {
     id: roomId, code, hostId: playerId,
     players: [{ id: playerId, name, ws: null, connected: false, isSpectator: false, isBot: false }],
-    gameState: null, createdAt: Date.now(),
+    gameState: null, createdAt: Date.now(), isPublic,
   };
   rooms.set(roomId, room);
   res.json({ roomId, playerId, code, isHost: true, isSpectator: false, room: roomInfo(room) });
@@ -158,6 +161,46 @@ app.post('/api/rooms/:roomId/remove-bot', (req, res) => {
 app.get('/api/rooms/:code', (req, res) => {
   const room = byCode(req.params.code);
   if (!room) return res.status(404).json({ error: 'Sala no encontrada.' });
+  res.json({ room: roomInfo(room) });
+});
+
+// List public rooms
+app.get('/api/rooms', (req, res) => {
+  const list = [];
+  for (const room of rooms.values()) {
+    if (!room.isPublic) continue;
+    const active = room.players.filter(p => !p.isSpectator);
+    list.push({
+      id: room.id, code: room.code,
+      playerCount: active.length,
+      hasGame: !!room.gameState,
+      isPublic: true,
+      hostName: room.players.find(p => p.id === room.hostId)?.name || '?',
+    });
+  }
+  res.json({ rooms: list });
+});
+
+// Delete room (host only)
+app.delete('/api/rooms/:roomId', (req, res) => {
+  const { playerId } = req.body;
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'Sala no encontrada.' });
+  if (room.hostId !== playerId) return res.status(403).json({ error: 'Solo el host puede eliminar la sala.' });
+  // Notify connected players
+  sendAll(room, { type: 'room_deleted', data: { message: 'El host eliminó la sala.' } });
+  rooms.delete(req.params.roomId);
+  res.json({ ok: true });
+});
+
+// Toggle public/private
+app.post('/api/rooms/:roomId/toggle-public', (req, res) => {
+  const { playerId } = req.body;
+  const room = rooms.get(req.params.roomId);
+  if (!room) return res.status(404).json({ error: 'Sala no encontrada.' });
+  if (room.hostId !== playerId) return res.status(403).json({ error: 'Solo el host puede cambiar la visibilidad.' });
+  room.isPublic = !room.isPublic;
+  sendAll(room, { type: 'room_update', data: { room: roomInfo(room) } });
   res.json({ room: roomInfo(room) });
 });
 

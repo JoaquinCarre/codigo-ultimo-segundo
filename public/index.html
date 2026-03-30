@@ -1522,6 +1522,7 @@ async function tryRestore() {
     MP.myId = s.myId; MP.myName = s.myName;
     MP.roomId = d.roomId; MP.roomCode = d.code;
     MP.isHost = d.isHost; MP.isSpectator = d.isSpectator;
+    MP.isPublic = d.room?.isPublic !== undefined ? d.room.isPublic : (s.isPublic !== false);
     MP.roomPlayers = d.room.players;
     if (d.gameState) {
       G = d.gameState;
@@ -1738,7 +1739,10 @@ function resetLocalState() {
 
 function goLobby() {
   document.getElementById('modal-ov').style.display = 'none';
-  G = null; MP.screen = 'lobby'; appLog = []; MP.hints = [];
+  G = null; appLog = []; MP.hints = [];
+  // If still in a room, go to lobby; otherwise go to landing
+  MP.screen = MP.roomId ? 'lobby' : 'landing';
+  if(MP.screen==='landing') loadPublicRooms();
   renderAll();
 }
 
@@ -1895,15 +1899,53 @@ function wsColor() {
 function wsDot() { return MP.wsStatus === 'connected' ? '●' : '○'; }
 
 function buildLandingUI() {
-  return '<div style="max-width:520px;margin:30px auto;padding:0 16px">' +
+  const myRoom = MP.roomId ? (MP.roomPlayers.length > 0 ? {code:MP.roomCode, isHost:MP.isHost, players:MP.roomPlayers, isPublic:MP.isPublic} : null) : null;
+  const pubRooms = (MP.publicRooms||[]).filter(r => !myRoom || r.code !== MP.roomCode);
+  const savedName = MP.myName || localStorage.getItem('cus_last_name') || '';
+
+  let myRoomSection = '';
+  if (myRoom) {
+    const active = myRoom.players.filter(p=>!p.isSpectator);
+    myRoomSection = '<div class="lobby-panel" style="border-color:var(--g)">' +
+      '<div class="ptitle" style="color:var(--g)">TU SALA ACTIVA</div>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+      '<div class="room-code" style="flex:1;font-size:22px;letter-spacing:6px;padding:10px;margin:0" onclick="copyCode()">' + myRoom.code + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:5px">' +
+      '<span style="font-size:10px;color:var(--txd);text-align:center">' + active.length + '/6 agentes</span>' +
+      '</div></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      '<button class="btn primary" onclick="goToLobby()">↩ VOLVER A LA SALA</button>' +
+      (myRoom.isHost ? '<button class="btn orange" onclick="doTogglePublic()">' + (myRoom.isPublic ? '🔒 Hacer privada' : '🌐 Hacer pública') + '</button>' : '') +
+      (myRoom.isHost ? '<button class="btn danger" onclick="doDeleteRoom()" title="Eliminar sala">🗑 Eliminar</button>' : '<button class="btn" onclick="doLeaveRoom()">Salir</button>') +
+      '</div></div>';
+  }
+
+  const pubSection = pubRooms.length > 0 ?
+    '<div class="lobby-panel"><div class="ptitle">SALAS PÚBLICAS</div>' +
+    pubRooms.map(r =>
+      '<div class="player-item" style="justify-content:space-between">' +
+      '<div>' +
+      '<span style="font-family:Orbitron,monospace;color:var(--g);letter-spacing:3px;font-size:13px">' + r.code + '</span>' +
+      '<span style="font-size:10px;color:var(--txd);margin-left:10px">Host: ' + r.hostName + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<span style="font-size:10px;color:' + (r.hasGame ? 'var(--txd)' : 'var(--g)') + '">' + r.playerCount + '/6 ' + (r.hasGame ? '🔴 en juego' : '⬤ esperando') + '</span>' +
+      (!r.hasGame ? `<button class="btn" style="font-size:10px;padding:4px 10px" onclick="doJoinPublicRoom('${r.code}')">→ UNIRSE</button>` : '') +
+      '</div></div>'
+    ).join('') +
+    '<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="loadPublicRooms().then(()=>renderAll())">↻ Actualizar</button></div>' : '';
+
+  return '<div style="max-width:520px;margin:20px auto;padding:0 16px">' +
+    myRoomSection +
     '<div class="lobby-panel"><div class="ptitle">CREAR SALA</div>' +
-    '<input class="field" id="inp-name" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:10px">' +
+    '<input class="field" id="inp-name" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:10px" value="' + savedName + '">' +
     '<button class="btn primary" style="width:100%" onclick="doCreate()">+ CREAR NUEVA SALA</button></div>' +
-    '<div class="lobby-panel"><div class="ptitle">UNIRSE A SALA</div>' +
-    '<input class="field" id="inp-name2" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:8px">' +
+    '<div class="lobby-panel"><div class="ptitle">UNIRSE CON CÓDIGO</div>' +
+    '<input class="field" id="inp-name2" type="text" maxlength="20" placeholder="Tu nombre de agente..." style="margin-bottom:8px" value="' + savedName + '">' +
     '<input class="field" id="inp-code" type="text" maxlength="6" placeholder="Código (6 letras)..." style="margin-bottom:10px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">' +
     '<button class="btn blue-btn" style="width:100%" onclick="doJoin()">→ UNIRSE A SALA</button></div>' +
-    '<div style="font-size:10px;color:var(--txd);line-height:1.8;text-align:center">' +
+    pubSection +
+    '<div style="font-size:10px;color:var(--txd);line-height:1.8;text-align:center;margin-top:8px">' +
     '<span style="color:var(--g)">🔴</span> Rojo congela el reloj &nbsp;|&nbsp; <span style="color:var(--g)">🟢</span> Verde roba 2 &nbsp;|&nbsp; <span style="color:var(--g)">🔵</span> Azul ve 3 próximas<br>' +
     '<span style="color:#ff88ee">★ La Bomba Especial está oculta. Si falla, el reloj va al doble.</span></div></div>';
 }
@@ -1915,9 +1957,19 @@ function buildLobbyUI() {
   const bots = active.filter(p => p.isBot);
   const wsStatus = '<span style="font-size:9px;font-family:Orbitron,monospace;letter-spacing:2px;color:' + wsColor() + '">' + wsDot() + ' ' + MP.wsStatus.toUpperCase() + '</span>';
 
+  const visibilityBtn = MP.isHost
+    ? '<button class="btn orange" style="font-size:10px;padding:4px 10px" onclick="doTogglePublic()">' + (MP.isPublic ? '🔒 Hacer privada' : '🌐 Hacer pública') + '</button>'
+    : '<span class="spec-badge" style="border-color:' + (MP.isPublic ? 'var(--g)' : 'var(--txd)') + ';color:' + (MP.isPublic ? 'var(--g)' : 'var(--txd)') + '">' + (MP.isPublic ? '🌐 PÚBLICA' : '🔒 PRIVADA') + '</span>';
+
   let html = '<div style="max-width:520px;margin:20px auto;padding:0 16px">' +
     '<div class="lobby-panel">' +
-    '<div class="ptitle">CÓDIGO DE SALA &nbsp;' + wsStatus + '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+    '<button class="btn" style="font-size:10px;padding:4px 10px" onclick="doGoToLanding()">← Inicio</button>' +
+    '<div style="flex:1"></div>' +
+    wsStatus + '&nbsp;' + visibilityBtn +
+    (MP.isHost ? '&nbsp;<button class="btn danger" style="font-size:10px;padding:4px 8px" onclick="doDeleteRoom()" title="Eliminar sala">🗑</button>' : '') +
+    '</div>' +
+    '<div class="ptitle">CÓDIGO DE SALA</div>' +
     '<div class="room-code" onclick="copyCode()" title="Toca para copiar">' + (MP.roomCode || '——') + '</div>' +
     '<div style="font-size:11px;color:var(--txd);text-align:center;margin-bottom:14px">Tocá para copiar y compartir con tu equipo</div>' +
     '<div class="ptitle">JUGADORES ACTIVOS (' + active.length + '/6)</div>';
@@ -1987,7 +2039,7 @@ function buildMPGameUI(root) {
 
   // Let base game render
   root.innerHTML = buildMPUI();
-  /* updateTimer(); */
+  // updateTimer removed — timer is now rendered inline in buildMPUI
 }
 
 // Wrapper around base buildUI that adds MP features
@@ -2397,13 +2449,12 @@ function _afterAction(desc) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 (async () => {
+  await loadPublicRooms();
   const restored = await tryRestore();
   if (!restored) {
     MP.screen = 'landing';
     renderAll();
   } else {
-    // Render immediately with restored state (game or lobby)
-    // WS will update room/game state once connected
     renderAll();
   }
 })();
