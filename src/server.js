@@ -196,9 +196,8 @@ wss.on('connection', (ws) => {
     }
     if (type === 'game_action') {
       room.gameState = data.gameState;
-      // Exclude sender — they already have the state locally, no need to receive it back
-      // (receiving own push back can corrupt local in-progress selections like fault cards)
-      sendAll(room, { type: 'game_state', data: { gameState: room.gameState, actionBy: playerId, action: data.action } }, playerId);
+      // Broadcast to ALL including sender for guaranteed sync
+      sendAll(room, { type: 'game_state', data: { gameState: room.gameState, actionBy: playerId, action: data.action } });
       return;
     }
     if (type === 'start_game') {

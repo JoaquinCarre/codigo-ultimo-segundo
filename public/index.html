@@ -1623,10 +1623,20 @@ function handleWS(msg) {
     log('¡Partida iniciada!', 'lo'); renderAll(); return;
   }
   if (type === 'game_state') {
-    G = data.gameState; appLog = G.log || [];
+    const incoming = data.gameState;
+    const fromSelf = data.actionBy === MP.myId;
+
+    // If this update is from ourselves, preserve any in-progress local selections
+    // to avoid overwriting cards the player is currently choosing during fault/crisis
+    const preserveFaultSel = fromSelf && G && G.faultRound && (G.faultSelected||[]).length > 0;
+    const preserveCrisisSel = fromSelf && G && G.crisisMode && (G.crisisOwnSelected||[]).length > 0;
+    const savedFaultSel = preserveFaultSel ? [...(G.faultSelected||[])] : null;
+    const savedCrisisSel = preserveCrisisSel ? [...(G.crisisOwnSelected||[])] : null;
+
+    G = incoming; appLog = G.log || [];
     G.selectedCards = G.selectedCards || [];
-    G.crisisOwnSelected = G.crisisOwnSelected || [];
-    G.faultSelected = G.faultSelected || [];
+    G.crisisOwnSelected = savedCrisisSel || G.crisisOwnSelected || [];
+    G.faultSelected = savedFaultSel || G.faultSelected || [];
     G.discardSelected = G.discardSelected || [];
     G.faultOrder = G.faultOrder || [];
     G.faultContrib = G.faultContrib || [];
