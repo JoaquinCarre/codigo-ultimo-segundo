@@ -2447,6 +2447,73 @@ function _afterAction(desc) {
   renderAll();
 }
 
+// ─── ROOM BROWSER HELPERS ─────────────────────────────────────────────────
+async function loadPublicRooms() {
+  try {
+    const r = await fetch('/api/rooms');
+    const d = await r.json();
+    MP.publicRooms = d.rooms || [];
+  } catch { MP.publicRooms = []; }
+}
+
+function doLeaveRoom() {
+  MP.screen = 'landing';
+  loadPublicRooms().then(() => renderAll());
+}
+
+function goToLobby() {
+  MP.screen = 'lobby'; renderAll();
+}
+
+async function doGoToLanding() {
+  MP.screen = 'landing';
+  await loadPublicRooms();
+  renderAll();
+}
+
+async function doJoinPublicRoom(code) {
+  let name = MP.myName || (localStorage.getItem('cus_last_name') || '').trim();
+  if (!name) { name = prompt('Tu nombre de agente:', ''); if (!name) return; }
+  MP.myName = name; localStorage.setItem('cus_last_name', name);
+  const nameEl = document.getElementById('inp-name2') || document.getElementById('inp-name');
+  if (nameEl) nameEl.value = name;
+  const codeEl = document.getElementById('inp-code');
+  if (codeEl) codeEl.value = code;
+  await doJoin();
+}
+
+async function doDeleteRoom() {
+  if (!MP.isHost || !MP.roomId) return;
+  if (!confirm('¿Eliminar la sala? Todos los jugadores serán desconectados.')) return;
+  try {
+    const r = await fetch('/api/rooms/' + MP.roomId, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId: MP.myId }),
+    });
+    const d = await r.json(); if (!r.ok) { alert(d.error); return; }
+    clearSession(); G = null;
+    MP.roomId = null; MP.roomCode = null; MP.roomPlayers = [];
+    MP.screen = 'landing';
+    await loadPublicRooms(); renderAll();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function doTogglePublic() {
+  if (!MP.isHost || !MP.roomId) return;
+  try {
+    const r = await fetch('/api/rooms/' + MP.roomId + '/toggle-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerId: MP.myId }),
+    });
+    const d = await r.json(); if (!r.ok) { alert(d.error); return; }
+    MP.isPublic = d.room.isPublic;
+    MP.roomPlayers = d.room.players;
+    saveSession(); renderAll();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────
 (async () => {
   await loadPublicRooms();
